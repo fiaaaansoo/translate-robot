@@ -1,0 +1,37 @@
+# Dépendances / envs
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# État interne des hooks crew (régénéré, pas de valeur à versionner)
+crew/CLAUDE_CONTEXT/.task_state.json
+crew/CLAUDE_CONTEXT/crew_lock.json
+crew/CLAUDE_CONTEXT/.gate_armed
+crew/CLAUDE_CONTEXT/.hook_debug_dump.json
+crew/CLAUDE_CONTEXT/.crew_lock.mutex
+crew/CLAUDE_CONTEXT/BATCH_LOCKS.md
+
+# Build outputs courants
+dist/
+build/
+.next/
+*.tsbuildinfo
+
+# OS / éditeurs
+.DS_Store
+Thumbs.db
+
+# Claude Code — état local/perso, jamais partagé entre postes
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+.claude/worktrees/
+
+# Venv du crew-dashboard (bootstrap projet-local via crew/dashboard.bat)
+.dashboard-venv/
