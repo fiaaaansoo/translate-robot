@@ -1,0 +1,12 @@
+#!/usr/bin/env node
+// Minimal entry point for v1 scaffold — proves `npx translate-robot` is
+// invocable. Real CLI orchestration (extract -> translate -> PR) lands in
+// task 07 (src/cli/) and will replace this body, not this file's shebang.
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'));
+
+console.log(`translate-robot v${pkg.version}`);
