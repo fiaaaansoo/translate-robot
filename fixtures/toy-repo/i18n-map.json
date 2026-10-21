@@ -1,0 +1,6 @@
+{
+  "expense_report_submit": {
+    "component": "component/button.html",
+    "selector": "#expense-report-submit"
+  }
+}
