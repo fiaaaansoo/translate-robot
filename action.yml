@@ -1,0 +1,121 @@
+name: 'translate-robot'
+description: >-
+  Translates new UI strings under the real rendered width of their
+  component, and opens a pull request for human review. Never merges or
+  approves a pull request itself.
+author: 'translate-robot'
+
+inputs:
+  repo:
+    description: 'Path to the target repo checkout (defaults to the Action workspace).'
+    required: false
+    default: ${{ github.workspace }}
+  owner:
+    description: 'GitHub repository owner. Defaults to the owner of the repo this Action runs in.'
+    required: false
+  repo-name:
+    description: 'GitHub repository name. Defaults to the name of the repo this Action runs in.'
+    required: false
+  base-branch:
+    description: 'Base branch to diff against and to open the pull request against.'
+    required: false
+    default: 'main'
+  old-i18n:
+    description: 'Path to the i18n catalog as it existed on base-branch. Omit to resolve it automatically from git.'
+    required: false
+  new-i18n:
+    description: 'Path to the i18n catalog after the change.'
+    required: false
+    default: 'i18n/en.json'
+  mapping:
+    description: 'Path to the key -> component mapping file.'
+    required: false
+    default: 'i18n-map.json'
+  i18n-target:
+    description: 'Path to the target locale file to write. Defaults to i18n/<target-locale>.json.'
+    required: false
+  target-locale:
+    description: 'Target locale to translate into.'
+    required: false
+    default: 'de'
+  dry-run:
+    description: 'Extract, translate, and measure only - write nothing, open no pull request.'
+    required: false
+    default: 'false'
+  recorded-translations:
+    description: 'Path to a pre-recorded translations file, for demos/tests without a real LLM call.'
+    required: false
+  anthropic-api-key:
+    description: 'Anthropic API key. Required unless dry-run with recorded-translations. Never logged.'
+    required: false
+  github-token:
+    description: 'GitHub token used to push the translation branch and open the pull request. Never logged.'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+
+    - name: Install translate-robot
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: |
+        npm ci
+        npx playwright install --with-deps chromium
+        npm run build
+
+    - name: Resolve the base-branch i18n catalog
+      id: resolve-old-i18n
+      shell: bash
+      working-directory: ${{ inputs.repo }}
+      run: |
+        if [ -n "${{ inputs.old-i18n }}" ]; then
+          echo "path=${{ inputs.old-i18n }}" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        # No explicit --old-i18n: resolve the pre-change catalog from git
+        # itself (this Action's own job - the CLI just diffs two files on
+        # disk and has no git-ref concept). A missing file on base-branch
+        # (first-ever add) is not an error - the CLI already treats a
+        # missing/omitted old-i18n path as an empty catalog.
+        resolved="$(mktemp)"
+        if git show "origin/${{ inputs.base-branch }}:./${{ inputs.new-i18n }}" > "$resolved" 2>/dev/null; then
+          echo "path=$resolved" >> "$GITHUB_OUTPUT"
+        else
+          echo "path=" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Run translate-robot
+      shell: bash
+      working-directory: ${{ inputs.repo }}
+      env:
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: |
+        args=(
+          run
+          --repo .
+          --new-i18n "${{ inputs.new-i18n }}"
+          --mapping "${{ inputs.mapping }}"
+          --target-locale "${{ inputs.target-locale }}"
+          --base-branch "${{ inputs.base-branch }}"
+          --owner "${{ inputs.owner || github.repository_owner }}"
+          --repo-name "${{ inputs.repo-name || github.event.repository.name }}"
+        )
+        if [ -n "${{ steps.resolve-old-i18n.outputs.path }}" ]; then
+          args+=(--old-i18n "${{ steps.resolve-old-i18n.outputs.path }}")
+        fi
+        if [ -n "${{ inputs.i18n-target }}" ]; then
+          args+=(--i18n-target "${{ inputs.i18n-target }}")
+        fi
+        if [ -n "${{ inputs.recorded-translations }}" ]; then
+          args+=(--recorded-translations "${{ inputs.recorded-translations }}")
+        fi
+        if [ "${{ inputs.dry-run }}" = "true" ]; then
+          args+=(--dry-run)
+        fi
+        node "${{ github.action_path }}/bin/translate-robot" "${args[@]}"

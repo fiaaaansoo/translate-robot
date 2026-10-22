@@ -1,0 +1,43 @@
+name: translate-robot example
+
+# Demonstrates the composite action (./action.yml) against the committed
+# fixtures/toy-repo/ fixture. Manual trigger only (workflow_dispatch) -
+# this never fires on push/pull_request, so it can never open a surprise
+# pull request as a side effect of normal development. A human decides
+# when to run it, and which mode.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: >-
+          "dry-run" (default): extract/translate/measure only, print the
+          result, write and push nothing. "full": write the translated
+          file, push a branch, and open a real pull request against this
+          repo - still with zero external secrets, since it uses the
+          pre-recorded toy-repo translation and the repo's own automatic
+          GITHUB_TOKEN.
+        type: choice
+        options: ['dry-run', 'full']
+        default: 'dry-run'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run translate-robot on fixtures/toy-repo
+        uses: ./
+        with:
+          repo: fixtures/toy-repo
+          new-i18n: i18n/en.json
+          mapping: i18n-map.json
+          recorded-translations: translations.recorded.json
+          target-locale: de
+          base-branch: ${{ github.event.repository.default_branch }}
+          dry-run: ${{ inputs.mode == 'dry-run' }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
