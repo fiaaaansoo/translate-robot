@@ -57,6 +57,38 @@ describe('createCli (real argv parsing, real toy-repo fixture, no network)', () 
     expect(errorSpy).not.toHaveBeenCalled();
   }, 30_000);
 
+  it('never prints the Anthropic API key to stdout/stderr, even while it sits in the environment throughout a run', async () => {
+    const SECRET = 'sk-ant-cli-test-sentinel-do-not-leak';
+    process.env.ANTHROPIC_API_KEY = SECRET;
+    const fixtureRoot = path.join(REPO_ROOT, 'fixtures', 'toy-repo');
+    const program = createCli();
+
+    await program.parseAsync(
+      [
+        'node',
+        'translate-robot',
+        'run',
+        '--repo',
+        fixtureRoot,
+        '--new-i18n',
+        path.join(fixtureRoot, 'i18n', 'en.json'),
+        '--mapping',
+        path.join(fixtureRoot, 'i18n-map.json'),
+        '--recorded-translations',
+        path.join(fixtureRoot, 'translations.recorded.json'),
+        '--target-locale',
+        'de',
+        '--dry-run',
+      ],
+      { from: 'node' },
+    );
+
+    const allOutput = [...logSpy.mock.calls, ...errorSpy.mock.calls]
+      .map((call: unknown[]) => String(call[0]))
+      .join('\n');
+    expect(allOutput).not.toContain(SECRET);
+  }, 30_000);
+
   it('rejects full mode without --owner/--repo-name, never attempting a real LLM or GitHub call', async () => {
     const fixtureRoot = path.join(REPO_ROOT, 'fixtures', 'toy-repo');
     const program = createCli();
