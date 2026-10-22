@@ -55,18 +55,28 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    # github.action_path keeps a literal "/." segment when this action is
+    # referenced locally (uses: ./, as in the demo workflow) - the glob
+    # matcher behind setup-node's cache-dependency-path and hashFiles()
+    # rejects any pattern containing a literal "." or ".." path segment,
+    # so the path is normalized once here before either consumes it.
+    - name: Resolve this action's own lockfile path
+      id: resolve-lockfile
+      shell: bash
+      run: echo "path=$(realpath "${{ github.action_path }}/package-lock.json")" >> "$GITHUB_OUTPUT"
+
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '22'
         cache: 'npm'
-        cache-dependency-path: ${{ github.action_path }}/package-lock.json
+        cache-dependency-path: ${{ steps.resolve-lockfile.outputs.path }}
 
     - name: Cache Playwright browsers
       uses: actions/cache@v4
       with:
         path: ~/.cache/ms-playwright
-        key: ${{ runner.os }}-playwright-${{ hashFiles(format('{0}/package-lock.json', github.action_path)) }}
+        key: ${{ runner.os }}-playwright-${{ hashFiles(steps.resolve-lockfile.outputs.path) }}
 
     - name: Install translate-robot
       shell: bash
