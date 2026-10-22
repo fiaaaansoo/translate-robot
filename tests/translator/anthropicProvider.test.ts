@@ -1,13 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createAnthropicProvider } from '../../src/translator/anthropicProvider.js';
 import { baseRequest } from './testHelpers.js';
-
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'content-type': 'application/json' },
-  });
-}
+import { jsonResponse } from '../helpers.js';
 
 const SECRET_KEY = 'sk-ant-super-secret-value-do-not-leak';
 

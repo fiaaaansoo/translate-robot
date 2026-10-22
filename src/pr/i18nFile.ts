@@ -13,5 +13,12 @@ export function mergeTranslations(
   updates: Record<string, string>,
 ): string {
   const existing = existingRaw === undefined ? {} : parseFlatObject(existingRaw, targetPath);
+
+  for (const [key, value] of Object.entries(existing)) {
+    if (typeof value !== 'string') {
+      throw new Error(`${targetPath} : la clé "${key}" n'a pas une valeur texte`);
+    }
+  }
+
   return JSON.stringify({ ...existing, ...updates }, null, 2) + '\n';
 }

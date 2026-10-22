@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createGitHubClient } from '../../src/pr/github.js';
 import type { OpenPullRequestParams } from '../../src/pr/github.js';
+import { jsonResponse } from '../helpers.js';
 
 function baseParams(overrides: Partial<OpenPullRequestParams> = {}): OpenPullRequestParams {
   return {
@@ -12,13 +13,6 @@ function baseParams(overrides: Partial<OpenPullRequestParams> = {}): OpenPullReq
     base: 'main',
     ...overrides,
   };
-}
-
-function jsonResponse(body: unknown, status = 201): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'content-type': 'application/json' },
-  });
 }
 
 const SECRET_TOKEN = 'ghp_super_secret_value_do_not_leak';

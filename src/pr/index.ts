@@ -1,4 +1,4 @@
-import * as fs from 'node:fs';
+import { readFile, writeFile } from 'node:fs/promises';
 import type { ExtractedChange, TranslationResult } from '../types.js';
 import { mergeTranslations } from './i18nFile.js';
 import { createGitClient, type GitClient } from './git.js';
@@ -54,10 +54,15 @@ export async function openTranslationPr(
     updates[change.key] = result.translatedText;
   }
 
-  const existingRaw = fs.existsSync(options.i18nTargetPath)
-    ? fs.readFileSync(options.i18nTargetPath, 'utf-8')
-    : undefined;
-  fs.writeFileSync(
+  let existingRaw: string | undefined;
+  try {
+    existingRaw = await readFile(options.i18nTargetPath, 'utf-8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw error;
+    }
+  }
+  await writeFile(
     options.i18nTargetPath,
     mergeTranslations(existingRaw, options.i18nTargetPath, updates),
   );

@@ -50,20 +50,18 @@ describe('createFixtureProvider (temp file)', () => {
     expect(() => createFixtureProvider(recordedPath)).toThrow(/JSON/);
   });
 
-  it('throws a clear error when a key maps to something other than a per-locale object', async () => {
+  it('throws a clear error at construction time when a key maps to something other than a per-locale object', () => {
     const recordedPath = path.join(dir, 'translations.recorded.json');
     fs.writeFileSync(recordedPath, JSON.stringify({ greeting: 'not an object' }));
-    const provider = createFixtureProvider(recordedPath);
 
-    await expect(provider.translate(baseRequest())).rejects.toThrow(/greeting/);
+    expect(() => createFixtureProvider(recordedPath)).toThrow(/greeting/);
   });
 
-  it('throws a clear error when the recorded value for a locale is not a string', async () => {
+  it('throws a clear error at construction time when a recorded value for a locale is not a string', () => {
     const recordedPath = path.join(dir, 'translations.recorded.json');
     fs.writeFileSync(recordedPath, JSON.stringify({ greeting: { de: 42 } }));
-    const provider = createFixtureProvider(recordedPath);
 
-    await expect(provider.translate(baseRequest())).rejects.toThrow(/must be a string/);
+    expect(() => createFixtureProvider(recordedPath)).toThrow(/must be a string/);
   });
 });
 

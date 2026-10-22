@@ -31,4 +31,11 @@ describe('mergeTranslations', () => {
       /de\.json/,
     );
   });
+
+  it('throws a clear error naming the key when an existing value is not a string', () => {
+    const existing = JSON.stringify({ greeting: 42 });
+    expect(() => mergeTranslations(existing, 'de.json', { farewell: 'Auf Wiedersehen' })).toThrow(
+      /greeting/,
+    );
+  });
 });

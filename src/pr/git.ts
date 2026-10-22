@@ -25,14 +25,25 @@ export function createGitClient(repoRoot: string): GitClient {
     await run('git', args, { cwd: repoRoot });
   }
 
+  async function hasStagedChanges(): Promise<boolean> {
+    try {
+      await run('git', ['diff', '--cached', '--quiet'], { cwd: repoRoot });
+      return false; // exit 0: the index matches HEAD, nothing staged
+    } catch (error) {
+      if ((error as { code?: number }).code === 1) {
+        return true; // exit 1: the index differs from HEAD
+      }
+      throw error; // anything else is a real git error, not a "no changes" signal
+    }
+  }
+
   return {
     async createBranch(branchName: string, baseBranch: string): Promise<void> {
       await git(['checkout', '-b', branchName, baseBranch]);
     },
     async commitAll(message: string): Promise<boolean> {
       await git(['add', '-A']);
-      const { stdout } = await run('git', ['status', '--porcelain'], { cwd: repoRoot });
-      if (stdout.trim() === '') {
+      if (!(await hasStagedChanges())) {
         return false;
       }
       await git(['commit', '-m', message]);

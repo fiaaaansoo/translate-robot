@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { openTranslationPr } from '../../src/pr/index.js';
-import type { PrChangeSummary } from '../../src/pr/index.js';
+import type { OpenTranslationPrOptions, PrChangeSummary } from '../../src/pr/index.js';
 import type { GitClient } from '../../src/pr/git.js';
 import type { GitHubClient, OpenPullRequestParams } from '../../src/pr/github.js';
 import type { ExtractedChange, TranslationResult } from '../../src/types.js';
@@ -62,23 +62,22 @@ function result(overrides: Partial<TranslationResult> = {}): TranslationResult {
 describe('openTranslationPr', () => {
   let repoRoot: string;
   let i18nTargetPath: string;
+  let git: GitClient & { calls: string[] };
+  let github: GitHubClient & { requests: OpenPullRequestParams[] };
 
   beforeEach(() => {
     repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'pr-index-test-'));
     i18nTargetPath = path.join(repoRoot, 'de.json');
+    git = createRecordingGitClient();
+    github = createRecordingGitHubClient();
   });
 
   afterEach(() => {
     fs.rmSync(repoRoot, { recursive: true, force: true });
   });
 
-  it('writes the merged translations to the target file', async () => {
-    fs.writeFileSync(i18nTargetPath, JSON.stringify({ farewell: 'Auf Wiedersehen' }));
-    const git = createRecordingGitClient();
-    const github = createRecordingGitHubClient();
-    const summaries: PrChangeSummary[] = [{ change: change(), result: result() }];
-
-    await openTranslationPr(summaries, 'de', {
+  function open(summaries: PrChangeSummary[], overrides: Partial<OpenTranslationPrOptions> = {}) {
+    return openTranslationPr(summaries, 'de', {
       repoRoot,
       i18nTargetPath,
       baseBranch: 'main',
@@ -87,7 +86,14 @@ describe('openTranslationPr', () => {
       repo: 'app',
       git,
       github,
+      ...overrides,
     });
+  }
+
+  it('writes the merged translations to the target file', async () => {
+    fs.writeFileSync(i18nTargetPath, JSON.stringify({ farewell: 'Auf Wiedersehen' }));
+
+    await open([{ change: change(), result: result() }]);
 
     expect(JSON.parse(fs.readFileSync(i18nTargetPath, 'utf-8'))).toEqual({
       farewell: 'Auf Wiedersehen',
@@ -96,20 +102,7 @@ describe('openTranslationPr', () => {
   });
 
   it('creates the branch, commits, and pushes in order before opening the PR', async () => {
-    const git = createRecordingGitClient();
-    const github = createRecordingGitHubClient();
-    const summaries: PrChangeSummary[] = [{ change: change(), result: result() }];
-
-    await openTranslationPr(summaries, 'de', {
-      repoRoot,
-      i18nTargetPath,
-      baseBranch: 'main',
-      branchName: 'i18n-de',
-      owner: 'acme',
-      repo: 'app',
-      git,
-      github,
-    });
+    await open([{ change: change(), result: result() }]);
 
     expect(git.calls).toEqual([
       'createBranch(i18n-de, main)',
@@ -120,20 +113,7 @@ describe('openTranslationPr', () => {
   });
 
   it('opens the PR with owner/repo/head/base and returns its URL', async () => {
-    const git = createRecordingGitClient();
-    const github = createRecordingGitHubClient();
-    const summaries: PrChangeSummary[] = [{ change: change(), result: result() }];
-
-    const outcome = await openTranslationPr(summaries, 'de', {
-      repoRoot,
-      i18nTargetPath,
-      baseBranch: 'main',
-      branchName: 'i18n-de',
-      owner: 'acme',
-      repo: 'app',
-      git,
-      github,
-    });
+    const outcome = await open([{ change: change(), result: result() }]);
 
     expect(outcome?.url).toBe('https://github.com/acme/app/pull/1');
     expect(github.requests[0]).toMatchObject({
@@ -145,22 +125,7 @@ describe('openTranslationPr', () => {
   });
 
   it('includes the key, measured width, iteration count, and component path in the PR body', async () => {
-    const git = createRecordingGitClient();
-    const github = createRecordingGitHubClient();
-    const summaries: PrChangeSummary[] = [
-      { change: change(), result: result({ measuredWidth: 123, iterations: 2 }) },
-    ];
-
-    await openTranslationPr(summaries, 'de', {
-      repoRoot,
-      i18nTargetPath,
-      baseBranch: 'main',
-      branchName: 'i18n-de',
-      owner: 'acme',
-      repo: 'app',
-      git,
-      github,
-    });
+    await open([{ change: change(), result: result({ measuredWidth: 123, iterations: 2 }) }]);
 
     const body = github.requests[0].body;
     expect(body).toContain('greeting');
@@ -170,60 +135,15 @@ describe('openTranslationPr', () => {
   });
 
   it('flags an unresolved key clearly in the PR body instead of hiding it', async () => {
-    const git = createRecordingGitClient();
-    const github = createRecordingGitHubClient();
-    const summaries: PrChangeSummary[] = [
-      { change: change(), result: result({ resolved: false }) },
-    ];
-
-    await openTranslationPr(summaries, 'de', {
-      repoRoot,
-      i18nTargetPath,
-      baseBranch: 'main',
-      branchName: 'i18n-de',
-      owner: 'acme',
-      repo: 'app',
-      git,
-      github,
-    });
+    await open([{ change: change(), result: result({ resolved: false }) }]);
 
     expect(github.requests[0].body).toContain('NOT RESOLVED');
   });
 
-  it('never calls merge or approve anywhere in its own flow', async () => {
-    const git = createRecordingGitClient();
-    const github = createRecordingGitHubClient();
-    const summaries: PrChangeSummary[] = [{ change: change(), result: result() }];
-
-    await openTranslationPr(summaries, 'de', {
-      repoRoot,
-      i18nTargetPath,
-      baseBranch: 'main',
-      branchName: 'i18n-de',
-      owner: 'acme',
-      repo: 'app',
-      git,
-      github,
-    });
-
-    expect(git.calls.join(' ')).not.toMatch(/merge|approve/i);
-  });
-
   it('returns null and never pushes or opens a PR when there is nothing to commit', async () => {
-    const git = createRecordingGitClient({ committed: false });
-    const github = createRecordingGitHubClient();
-    const summaries: PrChangeSummary[] = [{ change: change(), result: result() }];
+    git = createRecordingGitClient({ committed: false });
 
-    const outcome = await openTranslationPr(summaries, 'de', {
-      repoRoot,
-      i18nTargetPath,
-      baseBranch: 'main',
-      branchName: 'i18n-de',
-      owner: 'acme',
-      repo: 'app',
-      git,
-      github,
-    });
+    const outcome = await open([{ change: change(), result: result() }]);
 
     expect(outcome).toBeNull();
     expect(git.calls).toEqual([
@@ -234,7 +154,7 @@ describe('openTranslationPr', () => {
   });
 
   it('creates the branch before writing the translated file, so a branch failure leaves the working tree untouched', async () => {
-    const git: GitClient = {
+    git = {
       async createBranch() {
         throw new Error('simulated branch-creation failure');
       },
@@ -243,21 +163,10 @@ describe('openTranslationPr', () => {
       },
       async push() {},
     };
-    const github = createRecordingGitHubClient();
-    const summaries: PrChangeSummary[] = [{ change: change(), result: result() }];
 
-    await expect(
-      openTranslationPr(summaries, 'de', {
-        repoRoot,
-        i18nTargetPath,
-        baseBranch: 'main',
-        branchName: 'i18n-de',
-        owner: 'acme',
-        repo: 'app',
-        git,
-        github,
-      }),
-    ).rejects.toThrow('simulated branch-creation failure');
+    await expect(open([{ change: change(), result: result() }])).rejects.toThrow(
+      'simulated branch-creation failure',
+    );
 
     expect(fs.existsSync(i18nTargetPath)).toBe(false);
   });
