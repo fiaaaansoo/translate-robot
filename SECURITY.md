@@ -1,32 +1,50 @@
 # SECURITY.md — translate-robot
 
-À remplir dès que le projet a de l'auth, des secrets, ou des données
-utilisateur sensibles ; à supprimer sinon.
+## Reporting a vulnerability
+
+Please report security vulnerabilities through a
+[private security advisory](https://github.com/fiaaaansoo/translate-robot/security/advisories/new)
+on this repository, not a public issue. We'll acknowledge the report and
+work with you on a fix and a disclosure timeline.
 
 ## Secrets
 
-Token GitHub (App ou PAT scope minimal : lecture/écriture des fichiers de
-langue + ouverture de PR, jamais `admin`) et clé API du service de
-traduction/LLM : variables d'environnement uniquement, jamais commités,
-jamais loggés en clair, jamais renvoyés dans une réponse d'agent ou un
-message de commit/PR.
+GitHub token (App or PAT, minimal scope: read/write on language files +
+opening a PR, never `admin`) and the translation/LLM service's API key:
+environment variables only, never committed, never logged in clear text,
+never echoed back in an agent response or a commit/PR message.
 
 ## Auth boundaries
 
-Pas de service exposé côté utilisateur final pour l'instant (agents/CI
-uniquement) — donc pas de session/token côté client à ce stade. Si un
-dashboard ou une API de pilotage apparaît, revenir ici avant de l'exposer.
+No end-user-facing service at this stage (agents/CI only) — so no
+client-side session/token to consider yet. Revisit this file before
+exposing a dashboard or a control-plane API.
 
-## Données sensibles / PII
+## Sensitive data / PII
 
-Aucune donnée personnelle traitée par le robot lui-même : il lit des clés
-i18n et du texte d'interface, pas de données utilisateur. Vigilance si une
-clé de traduction contient par erreur un texte produit/PII — ne jamais le
-relayer dans un log public ou une PR sans vérification.
+The robot itself does not process personal data: it reads i18n keys and
+UI text, not user data. Be careful if a translation key accidentally
+contains product text or PII — never relay it into a public log or a PR
+without checking first.
 
-## Pré-production checklist
+## Translations are LLM output
 
-- Jamais de merge automatique d'une PR de traduction (cf. CONTRIBUTING.md).
-- Rate limiting / scope minimal sur le token GitHub utilisé par le robot.
-- Vérifier qu'aucune clé API n'apparaît dans les logs CI ou le corps d'une
-  PR générée.
+translate-robot verifies that a translation fits its component's
+rendered width; it does not verify that the translation is accurate,
+complete, or culturally or legally appropriate. Always have a translation
+PR reviewed by someone who reads the target language before merging —
+this is enforced structurally (the tool never merges or approves a PR
+itself, cf. CONTRIBUTING.md), but the human review itself is a content
+safeguard the tool cannot provide.
+
+Source strings sent to the configured LLM provider (the Anthropic API,
+by default) are processed by that third-party subprocessor under your
+own API key. translate-robot is not a hosted service: you remain the
+data controller for anything you send through it.
+
+## Pre-production checklist
+
+- Never auto-merge a translation PR (cf. CONTRIBUTING.md).
+- Rate limiting / minimal scope on the GitHub token the robot uses -
+  `contents: write` and `pull-requests: write` only, never `admin`.
+- Verify no API key appears in CI logs or in the body of a generated PR.

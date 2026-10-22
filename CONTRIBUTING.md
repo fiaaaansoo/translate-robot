@@ -1,37 +1,38 @@
 # CONTRIBUTING.md — translate-robot
 
-Merci de contribuer ! Ce document couvre les conventions attendues pour une
-contribution. Le suivi des tâches en cours vit dans `crew/` (voir
-`crew/CLAUDE_CONTEXT/AGENTS.md`) — pas besoin de le consulter pour une simple
-PR externe.
+Thanks for contributing! This document covers the conventions expected
+for a contribution. In-progress task tracking lives under `crew/` (see
+`crew/CLAUDE_CONTEXT/AGENTS.md`) — you don't need to read it for a
+regular external PR.
 
-Toute participation à ce projet est soumise à notre
-[Code de conduite](CODE_OF_CONDUCT.md).
+Participation in this project is governed by our
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Branches
 
-`feat/<slug>`, `fix/<slug>`, `chore/<slug>` ; une branche `claude/*` est
-acceptée pour le travail d'un agent, à fusionner ou rebaser avant de
-fusionner sur `main`.
+`feat/<slug>`, `fix/<slug>`, `chore/<slug>`; a `claude/*` branch is
+accepted for an agent's own work, to be merged or rebased before landing
+on the default branch.
 
 ## Commits
 
-[Conventional Commits](https://www.conventionalcommits.org/) : `feat:`,
-`fix:`, `chore:`, `docs:`, `refactor:`, `test:`. Un commit = un changement
-logique cohérent ; pas de "wip" ou "fix typo" en squash final.
+[Conventional Commits](https://www.conventionalcommits.org/): `feat:`,
+`fix:`, `chore:`, `docs:`, `refactor:`, `test:`. One commit = one
+coherent logical change; no "wip" or "fix typo" commits left in the
+final history.
 
 ## Pre-commit
 
-`python check_placeholders.py` bloque un commit si un placeholder `<...>`
-de bootstrap reste dans CLAUDE.md/AGENTS.md/PRODUCT.md/CONTRIBUTING.md/
-SECURITY.md/crew. Setup une fois par checkout :
-`git config core.hooksPath .githooks`. Un agent Claude Code sur ce repo
-l'a déjà via un hook `PreToolUse` dans `.claude/settings.json` — pas de
-setup requis dans ce cas.
+`python check_placeholders.py` blocks a commit if an unresolved
+bootstrap `<...>` placeholder remains in CLAUDE.md/AGENTS.md/PRODUCT.md/
+CONTRIBUTING.md/SECURITY.md/crew. One-time setup per checkout:
+`git config core.hooksPath .githooks`. A Claude Code agent on this repo
+already has this via a `PreToolUse` hook in `.claude/settings.json` - no
+setup needed in that case.
 
 ## Pull requests
 
-Revue obligatoire avant merge sur `main` — jamais de merge automatique,
-en particulier pas pour une PR qui modifie des fichiers de traduction (la
-qualité d'une traduction automatique n'est pas vérifiable par CI seule).
-CI doit être verte (lint + tests une fois qu'il y en a) avant merge.
+Review is required before merging - never an automatic merge, especially
+not for a PR that modifies translation files (an automated translation's
+quality isn't something CI alone can verify). CI must be green (lint +
+tests) before merging.
