@@ -1,8 +1,12 @@
 # CONTRIBUTING.md — translate-robot
 
-À remplir si plusieurs contributeurs/agents travaillent sur ce repo, ou si tu
-veux des conventions stables entre sessions. À supprimer si solo sans
-convention particulière (le suivi de tâches vit dans `crew/` de toute façon).
+Merci de contribuer ! Ce document couvre les conventions attendues pour une
+contribution. Le suivi des tâches en cours vit dans `crew/` (voir
+`crew/CLAUDE_CONTEXT/AGENTS.md`) — pas besoin de le consulter pour une simple
+PR externe.
+
+Toute participation à ce projet est soumise à notre
+[Code de conduite](CODE_OF_CONDUCT.md).
 
 ## Branches
 
