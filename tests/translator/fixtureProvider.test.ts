@@ -49,6 +49,22 @@ describe('createFixtureProvider (temp file)', () => {
     fs.writeFileSync(recordedPath, '{ not json');
     expect(() => createFixtureProvider(recordedPath)).toThrow(/JSON/);
   });
+
+  it('throws a clear error when a key maps to something other than a per-locale object', async () => {
+    const recordedPath = path.join(dir, 'translations.recorded.json');
+    fs.writeFileSync(recordedPath, JSON.stringify({ greeting: 'not an object' }));
+    const provider = createFixtureProvider(recordedPath);
+
+    await expect(provider.translate(baseRequest())).rejects.toThrow(/greeting/);
+  });
+
+  it('throws a clear error when the recorded value for a locale is not a string', async () => {
+    const recordedPath = path.join(dir, 'translations.recorded.json');
+    fs.writeFileSync(recordedPath, JSON.stringify({ greeting: { de: 42 } }));
+    const provider = createFixtureProvider(recordedPath);
+
+    await expect(provider.translate(baseRequest())).rejects.toThrow(/must be a string/);
+  });
 });
 
 describe('createFixtureProvider (real fixtures/toy-repo data)', () => {

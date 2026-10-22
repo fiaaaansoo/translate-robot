@@ -27,7 +27,9 @@ export interface OpenTranslationPrOptions {
 
 /**
  * Writes the translated keys into the target locale file, commits them on
- * a new branch, and opens a pull request for human review.
+ * a new branch, and opens a pull request for human review. Returns null
+ * if there was nothing to commit (the merged file is byte-for-byte
+ * identical to what's already there), rather than opening an empty PR.
  *
  * Non-negotiable safety boundary: this module never merges or approves a
  * pull request - GitClient and GitHubClient (cf. git.ts/github.ts) simply
@@ -39,9 +41,13 @@ export async function openTranslationPr(
   summaries: PrChangeSummary[],
   targetLocale: string,
   options: OpenTranslationPrOptions,
-): Promise<{ url: string }> {
+): Promise<{ url: string } | null> {
   const git = options.git ?? createGitClient(options.repoRoot);
   const github = options.github ?? createGitHubClient();
+
+  // Branch first, so a failure past this point never leaves translated
+  // content sitting uncommitted on the base branch's working tree.
+  await git.createBranch(options.branchName, options.baseBranch);
 
   const updates: Record<string, string> = {};
   for (const { change, result } of summaries) {
@@ -57,8 +63,10 @@ export async function openTranslationPr(
   );
 
   const title = `i18n(${targetLocale}): translate ${summaries.length} key(s)`;
-  await git.createBranch(options.branchName, options.baseBranch);
-  await git.commitAll(title);
+  const committed = await git.commitAll(title);
+  if (!committed) {
+    return null;
+  }
   await git.push(options.branchName);
 
   return github.openPullRequest({

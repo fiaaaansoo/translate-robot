@@ -5,7 +5,8 @@ const run = promisify(execFile);
 
 export interface GitClient {
   createBranch(branchName: string, baseBranch: string): Promise<void>;
-  commitAll(message: string): Promise<void>;
+  /** Stages and commits every change. Returns false (a no-op, not an error) if there was nothing to commit. */
+  commitAll(message: string): Promise<boolean>;
   push(branchName: string): Promise<void>;
 }
 
@@ -28,9 +29,14 @@ export function createGitClient(repoRoot: string): GitClient {
     async createBranch(branchName: string, baseBranch: string): Promise<void> {
       await git(['checkout', '-b', branchName, baseBranch]);
     },
-    async commitAll(message: string): Promise<void> {
+    async commitAll(message: string): Promise<boolean> {
       await git(['add', '-A']);
+      const { stdout } = await run('git', ['status', '--porcelain'], { cwd: repoRoot });
+      if (stdout.trim() === '') {
+        return false;
+      }
       await git(['commit', '-m', message]);
+      return true;
     },
     async push(branchName: string): Promise<void> {
       await git(['push', '-u', 'origin', branchName]);

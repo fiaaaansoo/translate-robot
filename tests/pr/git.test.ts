@@ -37,7 +37,8 @@ describe('createGitClient (real local git, real bare "remote", no network)', () 
 
     await client.createBranch('i18n-de', 'main');
     fs.writeFileSync(path.join(repoDir, 'de.json'), '{"greeting":"Hallo"}\n');
-    await client.commitAll('i18n(de): translate greeting');
+    const committed = await client.commitAll('i18n(de): translate greeting');
+    expect(committed).toBe(true);
     await client.push('i18n-de');
 
     expect(git(['rev-parse', '--abbrev-ref', 'HEAD'], repoDir).trim()).toBe('i18n-de');
@@ -60,5 +61,16 @@ describe('createGitClient (real local git, real bare "remote", no network)', () 
     const changedFiles = git(['show', '--name-status', '--format=', 'HEAD'], repoDir);
     expect(changedFiles).toContain('A\tfr.json');
     expect(changedFiles).toContain('D\tREADME.md');
+  });
+
+  it('commitAll returns false and does not create a commit when there is nothing to commit', async () => {
+    const client = createGitClient(repoDir);
+    await client.createBranch('i18n-noop', 'main');
+    const beforeSha = git(['rev-parse', 'HEAD'], repoDir).trim();
+
+    const committed = await client.commitAll('i18n(noop): nothing changed');
+
+    expect(committed).toBe(false);
+    expect(git(['rev-parse', 'HEAD'], repoDir).trim()).toBe(beforeSha);
   });
 });

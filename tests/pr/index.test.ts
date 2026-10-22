@@ -8,7 +8,9 @@ import type { GitClient } from '../../src/pr/git.js';
 import type { GitHubClient, OpenPullRequestParams } from '../../src/pr/github.js';
 import type { ExtractedChange, TranslationResult } from '../../src/types.js';
 
-function createRecordingGitClient(): GitClient & { calls: string[] } {
+function createRecordingGitClient(
+  options: { committed?: boolean } = {},
+): GitClient & { calls: string[] } {
   const calls: string[] = [];
   return {
     calls,
@@ -17,6 +19,7 @@ function createRecordingGitClient(): GitClient & { calls: string[] } {
     },
     async commitAll(message) {
       calls.push(`commitAll(${message})`);
+      return options.committed ?? true;
     },
     async push(branchName) {
       calls.push(`push(${branchName})`);
@@ -132,7 +135,7 @@ describe('openTranslationPr', () => {
       github,
     });
 
-    expect(outcome.url).toBe('https://github.com/acme/app/pull/1');
+    expect(outcome?.url).toBe('https://github.com/acme/app/pull/1');
     expect(github.requests[0]).toMatchObject({
       owner: 'acme',
       repo: 'app',
@@ -204,5 +207,58 @@ describe('openTranslationPr', () => {
     });
 
     expect(git.calls.join(' ')).not.toMatch(/merge|approve/i);
+  });
+
+  it('returns null and never pushes or opens a PR when there is nothing to commit', async () => {
+    const git = createRecordingGitClient({ committed: false });
+    const github = createRecordingGitHubClient();
+    const summaries: PrChangeSummary[] = [{ change: change(), result: result() }];
+
+    const outcome = await openTranslationPr(summaries, 'de', {
+      repoRoot,
+      i18nTargetPath,
+      baseBranch: 'main',
+      branchName: 'i18n-de',
+      owner: 'acme',
+      repo: 'app',
+      git,
+      github,
+    });
+
+    expect(outcome).toBeNull();
+    expect(git.calls).toEqual([
+      'createBranch(i18n-de, main)',
+      'commitAll(i18n(de): translate 1 key(s))',
+    ]);
+    expect(github.requests).toHaveLength(0);
+  });
+
+  it('creates the branch before writing the translated file, so a branch failure leaves the working tree untouched', async () => {
+    const git: GitClient = {
+      async createBranch() {
+        throw new Error('simulated branch-creation failure');
+      },
+      async commitAll() {
+        return true;
+      },
+      async push() {},
+    };
+    const github = createRecordingGitHubClient();
+    const summaries: PrChangeSummary[] = [{ change: change(), result: result() }];
+
+    await expect(
+      openTranslationPr(summaries, 'de', {
+        repoRoot,
+        i18nTargetPath,
+        baseBranch: 'main',
+        branchName: 'i18n-de',
+        owner: 'acme',
+        repo: 'app',
+        git,
+        github,
+      }),
+    ).rejects.toThrow('simulated branch-creation failure');
+
+    expect(fs.existsSync(i18nTargetPath)).toBe(false);
   });
 });
