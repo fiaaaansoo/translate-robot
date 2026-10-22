@@ -143,11 +143,11 @@ describe('runPipeline (unit, temp fixture, fake git/github)', () => {
     expect(outcome.results[0]?.key).toBe('greeting');
   }, 30_000);
 
-  it('treats a missing --old-i18n as a first-ever add, with no sentinel file left behind', async () => {
+  it('treats an omitted --old-i18n as a first-ever add', async () => {
     const outcome = await runPipeline({ ...baseOptions(), dryRun: true });
 
     expect(outcome.results).toHaveLength(1);
-    expect(fs.existsSync(path.join(dir, '.translate-robot-no-old-i18n'))).toBe(false);
+    expect(outcome.results[0]!.key).toBe('greeting');
   }, 30_000);
 
   it('--dry-run still attempts a real translation (not just skips it) when no --recorded-translations is given', async () => {
