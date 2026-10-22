@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import { parseFlatObject } from '../extractor/json-object.js';
 import type { TranslateRequest, TranslationProvider } from './provider.js';
 
 type RecordedTranslations = Record<string, Record<string, string>>;
@@ -11,12 +12,7 @@ type RecordedTranslations = Record<string, Record<string, string>>;
  */
 export function createFixtureProvider(recordedPath: string): TranslationProvider {
   const raw = fs.readFileSync(recordedPath, 'utf-8');
-  let recorded: RecordedTranslations;
-  try {
-    recorded = JSON.parse(raw) as RecordedTranslations;
-  } catch (cause) {
-    throw new Error(`createFixtureProvider: ${recordedPath} is not valid JSON`, { cause });
-  }
+  const recorded = parseFlatObject(raw, recordedPath) as unknown as RecordedTranslations;
 
   return {
     async translate(request: TranslateRequest): Promise<string> {

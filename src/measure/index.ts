@@ -1,4 +1,4 @@
-import { chromium } from 'playwright';
+import { chromium, type Browser, type Page } from 'playwright';
 
 export interface MeasureResult {
   /** scrollWidth of the measured node: how wide the content actually needs to be. */
@@ -33,9 +33,17 @@ export interface Measurer {
  */
 export async function createMeasurer(componentPath: string, selector: string): Promise<Measurer> {
   const browser = await chromium.launch();
-  const page = await browser.newPage();
-  await page.goto(`file://${componentPath}`);
+  try {
+    const page = await browser.newPage();
+    await page.goto(`file://${componentPath}`);
+    return buildMeasurer(browser, page, selector);
+  } catch (error) {
+    await browser.close();
+    throw error;
+  }
+}
 
+function buildMeasurer(browser: Browser, page: Page, selector: string): Measurer {
   return {
     async measure(candidateText: string): Promise<MeasureResult> {
       return page.evaluate(

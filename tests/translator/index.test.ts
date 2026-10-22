@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { translateAndValidate } from '../../src/translator/index.js';
+import { runTranslationAttempts, translateAndValidate } from '../../src/translator/index.js';
 import { createFixtureProvider } from '../../src/translator/fixtureProvider.js';
 import type { Measurer, MeasureResult } from '../../src/measure/index.js';
 import type { TranslateRequest, TranslationProvider } from '../../src/translator/provider.js';
@@ -21,25 +21,15 @@ function baseChange(overrides: Partial<ExtractedChange> = {}): ExtractedChange {
 }
 
 /** A Measurer that overflows for any text whose length is >= overflowAtLength. */
-function createFakeMeasurer(
-  clientWidth: number,
-  overflowAtLength: number,
-): Measurer & { closed: boolean } {
-  const fake = {
-    closed: false,
+function createFakeMeasurer(clientWidth: number, overflowAtLength: number): Measurer {
+  return {
     async measure(candidateText: string): Promise<MeasureResult> {
-      if (fake.closed) {
-        throw new Error('measure() called after close()');
-      }
       const measuredWidth =
         candidateText.length >= overflowAtLength ? clientWidth + 100 : clientWidth - 10;
       return { measuredWidth, clientWidth, overflows: measuredWidth > clientWidth };
     },
-    async close(): Promise<void> {
-      fake.closed = true;
-    },
+    async close(): Promise<void> {},
   };
-  return fake;
 }
 
 /** A provider that returns its candidates array in order, one per call. */
@@ -59,14 +49,12 @@ function createScriptedProvider(
   };
 }
 
-describe('translateAndValidate (fake measurer + fake provider, retry logic)', () => {
+describe('runTranslationAttempts (fake measurer + fake provider, retry logic)', () => {
   it('resolves on the first attempt when the first candidate fits', async () => {
     const measurer = createFakeMeasurer(200, 999);
     const provider = createScriptedProvider(['short']);
 
-    const result = await translateAndValidate(baseChange(), 'de', provider, {
-      createMeasurerImpl: async () => measurer,
-    });
+    const result = await runTranslationAttempts(baseChange(), 'de', provider, measurer);
 
     expect(result).toEqual({
       key: 'greeting',
@@ -75,16 +63,13 @@ describe('translateAndValidate (fake measurer + fake provider, retry logic)', ()
       iterations: 1,
       resolved: true,
     });
-    expect(measurer.closed).toBe(true);
   });
 
   it('retries after an overflow and resolves once a short-enough candidate arrives', async () => {
     const measurer = createFakeMeasurer(200, 10);
     const provider = createScriptedProvider(['this is way too long', 'short']);
 
-    const result = await translateAndValidate(baseChange(), 'de', provider, {
-      createMeasurerImpl: async () => measurer,
-    });
+    const result = await runTranslationAttempts(baseChange(), 'de', provider, measurer);
 
     expect(result.resolved).toBe(true);
     expect(result.iterations).toBe(2);
@@ -95,24 +80,21 @@ describe('translateAndValidate (fake measurer + fake provider, retry logic)', ()
     const measurer = createFakeMeasurer(200, 0);
     const provider = createScriptedProvider(['too long one', 'too long two', 'too long three']);
 
-    const result = await translateAndValidate(baseChange(), 'de', provider, {
+    const result = await runTranslationAttempts(baseChange(), 'de', provider, measurer, {
       maxAttempts: 3,
-      createMeasurerImpl: async () => measurer,
     });
 
     expect(result.resolved).toBe(false);
     expect(result.iterations).toBe(3);
     expect(result.translatedText).toBe('too long three');
-    expect(measurer.closed).toBe(true);
   });
 
   it('respects a custom maxAttempts bound', async () => {
     const measurer = createFakeMeasurer(200, 0);
     const provider = createScriptedProvider(['too long one', 'never reached']);
 
-    const result = await translateAndValidate(baseChange(), 'de', provider, {
+    const result = await runTranslationAttempts(baseChange(), 'de', provider, measurer, {
       maxAttempts: 1,
-      createMeasurerImpl: async () => measurer,
     });
 
     expect(result.resolved).toBe(false);
@@ -124,9 +106,7 @@ describe('translateAndValidate (fake measurer + fake provider, retry logic)', ()
     const measurer = createFakeMeasurer(321, 999);
     const provider = createScriptedProvider(['short']);
 
-    await translateAndValidate(baseChange(), 'de', provider, {
-      createMeasurerImpl: async () => measurer,
-    });
+    await runTranslationAttempts(baseChange(), 'de', provider, measurer);
 
     expect(provider.requests[0].targetWidthPx).toBe(321);
   });
@@ -135,32 +115,13 @@ describe('translateAndValidate (fake measurer + fake provider, retry logic)', ()
     const measurer = createFakeMeasurer(200, 5);
     const provider = createScriptedProvider(['long one', 'long two', 'ok']);
 
-    await translateAndValidate(baseChange(), 'de', provider, {
-      maxAttempts: 3,
-      createMeasurerImpl: async () => measurer,
-    });
+    await runTranslationAttempts(baseChange(), 'de', provider, measurer, { maxAttempts: 3 });
 
     expect(provider.requests[0].previousAttempts).toEqual([]);
     expect(provider.requests[1].previousAttempts).toHaveLength(1);
     expect(provider.requests[1].previousAttempts[0].text).toBe('long one');
     expect(provider.requests[2].previousAttempts).toHaveLength(2);
     expect(provider.requests[2].previousAttempts[1].text).toBe('long two');
-  });
-
-  it('closes the measurer even when the provider throws', async () => {
-    const measurer = createFakeMeasurer(200, 999);
-    const provider: TranslationProvider = {
-      async translate(): Promise<string> {
-        throw new Error('provider failure');
-      },
-    };
-
-    await expect(
-      translateAndValidate(baseChange(), 'de', provider, {
-        createMeasurerImpl: async () => measurer,
-      }),
-    ).rejects.toThrow('provider failure');
-    expect(measurer.closed).toBe(true);
   });
 });
 

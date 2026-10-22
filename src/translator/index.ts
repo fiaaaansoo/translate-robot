@@ -5,12 +5,6 @@ import type { TranslateAttempt, TranslationProvider } from './provider.js';
 export interface TranslateAndValidateOptions {
   /** Maximum number of translate->measure cycles before giving up. Default 3. */
   maxAttempts?: number;
-  /**
-   * Injectable for testing, so the retry-loop logic can run against a fake
-   * Measurer instead of launching a real browser per test. Defaults to the
-   * real createMeasurer.
-   */
-  createMeasurerImpl?: (componentPath: string, selector: string) => Promise<Measurer>;
 }
 
 /**
@@ -19,6 +13,11 @@ export interface TranslateAndValidateOptions {
  * each overflow. The target width is derived once, from the component's
  * own clientWidth (constant regardless of candidate text - cf.
  * src/measure/index.ts), not guessed or configured separately.
+ *
+ * Owns the Measurer's lifecycle: opens a real browser via createMeasurer
+ * and always closes it. For testing the retry logic itself without paying
+ * for a real browser, call runTranslationAttempts directly with a fake
+ * Measurer instead.
  */
 export async function translateAndValidate(
   change: ExtractedChange,
@@ -26,56 +25,64 @@ export async function translateAndValidate(
   provider: TranslationProvider,
   options: TranslateAndValidateOptions = {},
 ): Promise<TranslationResult> {
-  const maxAttempts = options.maxAttempts ?? 3;
-  const createMeasurerImpl = options.createMeasurerImpl ?? createMeasurer;
-  const measurer = await createMeasurerImpl(change.componentPath, change.measureTarget);
-
+  const measurer = await createMeasurer(change.componentPath, change.measureTarget);
   try {
-    const baseline = await measurer.measure(change.sourceText);
-    const targetWidthPx = baseline.clientWidth;
+    return await runTranslationAttempts(change, targetLocale, provider, measurer, options);
+  } finally {
+    await measurer.close();
+  }
+}
 
-    const previousAttempts: TranslateAttempt[] = [];
-    let lastText = change.sourceText;
-    let lastMeasuredWidth = baseline.measuredWidth;
+/**
+ * The generate->measure->retry loop itself, against an already-open
+ * Measurer that the caller owns (and must close). Separated from
+ * translateAndValidate so this logic can be tested against a fake
+ * Measurer without launching a real browser per test.
+ */
+export async function runTranslationAttempts(
+  change: ExtractedChange,
+  targetLocale: string,
+  provider: TranslationProvider,
+  measurer: Measurer,
+  options: TranslateAndValidateOptions = {},
+): Promise<TranslationResult> {
+  const maxAttempts = options.maxAttempts ?? 3;
+  const baseline = await measurer.measure(change.sourceText);
+  const targetWidthPx = baseline.clientWidth;
 
-    for (let iteration = 1; iteration <= maxAttempts; iteration += 1) {
-      const candidate = await provider.translate({
-        key: change.key,
-        sourceText: change.sourceText,
-        targetLocale,
-        targetWidthPx,
-        previousAttempts: [...previousAttempts],
-      });
-      const measured = await measurer.measure(candidate);
+  const previousAttempts: TranslateAttempt[] = [];
+  let candidate = change.sourceText;
+  let measuredWidth = baseline.measuredWidth;
+  let resolved = false;
+  let iteration = 0;
 
-      lastText = candidate;
-      lastMeasuredWidth = measured.measuredWidth;
+  while (iteration < maxAttempts && !resolved) {
+    iteration += 1;
+    candidate = await provider.translate({
+      key: change.key,
+      sourceText: change.sourceText,
+      targetLocale,
+      targetWidthPx,
+      previousAttempts: [...previousAttempts],
+    });
+    const measured = await measurer.measure(candidate);
+    measuredWidth = measured.measuredWidth;
+    resolved = !measured.overflows;
 
-      if (!measured.overflows) {
-        return {
-          key: change.key,
-          translatedText: candidate,
-          measuredWidth: measured.measuredWidth,
-          iterations: iteration,
-          resolved: true,
-        };
-      }
-
+    if (!resolved) {
       previousAttempts.push({
         text: candidate,
         measuredWidth: measured.measuredWidth,
         clientWidth: targetWidthPx,
       });
     }
-
-    return {
-      key: change.key,
-      translatedText: lastText,
-      measuredWidth: lastMeasuredWidth,
-      iterations: maxAttempts,
-      resolved: false,
-    };
-  } finally {
-    await measurer.close();
   }
+
+  return {
+    key: change.key,
+    translatedText: candidate,
+    measuredWidth,
+    iterations: iteration,
+    resolved,
+  };
 }

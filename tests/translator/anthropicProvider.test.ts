@@ -1,17 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createAnthropicProvider } from '../../src/translator/anthropicProvider.js';
-import type { TranslateRequest } from '../../src/translator/provider.js';
-
-function baseRequest(overrides: Partial<TranslateRequest> = {}): TranslateRequest {
-  return {
-    key: 'greeting',
-    sourceText: 'Hello',
-    targetLocale: 'de',
-    targetWidthPx: 200,
-    previousAttempts: [],
-    ...overrides,
-  };
-}
+import { baseRequest } from './testHelpers.js';
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {

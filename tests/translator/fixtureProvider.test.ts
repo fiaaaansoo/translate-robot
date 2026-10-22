@@ -4,21 +4,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createFixtureProvider } from '../../src/translator/fixtureProvider.js';
-import type { TranslateRequest } from '../../src/translator/provider.js';
+import { baseRequest } from './testHelpers.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
-
-function baseRequest(overrides: Partial<TranslateRequest> = {}): TranslateRequest {
-  return {
-    key: 'greeting',
-    sourceText: 'Hello',
-    targetLocale: 'de',
-    targetWidthPx: 200,
-    previousAttempts: [],
-    ...overrides,
-  };
-}
 
 describe('createFixtureProvider (temp file)', () => {
   let dir: string;
