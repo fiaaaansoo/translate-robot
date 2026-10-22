@@ -12,12 +12,14 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "pretest": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write ."
   },
   "dependencies": {
+    "commander": "^15.0.0",
     "playwright": "~1.56.0"
   },
   "devDependencies": {
