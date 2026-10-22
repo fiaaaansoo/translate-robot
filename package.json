@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Agent pipeline that translates new UI strings under the real visual width constraint of the component they render in, and opens a PR for human review.",
   "type": "module",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "bin": {
     "translate-robot": "./bin/translate-robot"
   },
