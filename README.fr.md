@@ -2,12 +2,12 @@ English version → [README.md](README.md)
 
 # translate-robot
 
-Traduit les nouvelles chaînes d'interface sous la contrainte réelle de
-largeur rendue de leur composant, pas une estimation au nombre de
+Traduit les nouvelles chaînes i18n d'interface sous la contrainte réelle
+de largeur rendue de leur composant, pas une estimation au nombre de
 caractères. Quand une traduction est trop longue pour le bouton, l'onglet
-ou l'élément de navigation où elle s'affiche, translate-robot le détecte
-avant la mise en production, pas après qu'un utilisateur l'ait signalé
-par une capture d'écran.
+ou l'élément de navigation où elle s'affiche, translate-robot détecte ce
+dépassement avant la mise en production, pas après qu'un utilisateur
+l'ait signalé par une capture d'écran.
 
 [![CI](https://github.com/fiaaaansoo/translate-robot/actions/workflows/ci.yml/badge.svg)](https://github.com/fiaaaansoo/translate-robot/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)

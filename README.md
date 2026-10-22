@@ -2,10 +2,11 @@ Lire en français → [README.fr.md](README.fr.md)
 
 # translate-robot
 
-Translates new UI strings under the real rendered width of their
+Translates new UI i18n strings under the real rendered width of their
 component, not a character-count guess. When a translation is too long
 for the button, tab, or nav item it renders in, translate-robot catches
-that before it ships, not after someone files a screenshot bug.
+that overflow before it ships, not after someone files a screenshot
+bug.
 
 [![CI](https://github.com/fiaaaansoo/translate-robot/actions/workflows/ci.yml/badge.svg)](https://github.com/fiaaaansoo/translate-robot/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
