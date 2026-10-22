@@ -44,6 +44,9 @@ function createScriptedProvider(
       requests.push(request);
       const candidate = candidates[callIndex];
       callIndex += 1;
+      if (candidate === undefined) {
+        throw new Error(`createScriptedProvider: no candidate configured for call #${callIndex}`);
+      }
       return candidate;
     },
   };
@@ -108,7 +111,7 @@ describe('runTranslationAttempts (fake measurer + fake provider, retry logic)', 
 
     await runTranslationAttempts(baseChange(), 'de', provider, measurer);
 
-    expect(provider.requests[0].targetWidthPx).toBe(321);
+    expect(provider.requests[0]!.targetWidthPx).toBe(321);
   });
 
   it('accumulates previousAttempts across retries so the provider sees growing feedback', async () => {
@@ -117,11 +120,11 @@ describe('runTranslationAttempts (fake measurer + fake provider, retry logic)', 
 
     await runTranslationAttempts(baseChange(), 'de', provider, measurer, { maxAttempts: 3 });
 
-    expect(provider.requests[0].previousAttempts).toEqual([]);
-    expect(provider.requests[1].previousAttempts).toHaveLength(1);
-    expect(provider.requests[1].previousAttempts[0].text).toBe('long one');
-    expect(provider.requests[2].previousAttempts).toHaveLength(2);
-    expect(provider.requests[2].previousAttempts[1].text).toBe('long two');
+    expect(provider.requests[0]!.previousAttempts).toEqual([]);
+    expect(provider.requests[1]!.previousAttempts).toHaveLength(1);
+    expect(provider.requests[1]!.previousAttempts[0]!.text).toBe('long one');
+    expect(provider.requests[2]!.previousAttempts).toHaveLength(2);
+    expect(provider.requests[2]!.previousAttempts[1]!.text).toBe('long two');
   });
 });
 

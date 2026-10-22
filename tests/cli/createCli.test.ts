@@ -49,7 +49,7 @@ describe('createCli (real argv parsing, real toy-repo fixture, no network)', () 
       { from: 'node' },
     );
 
-    const output = logSpy.mock.calls.map((call) => String(call[0])).join('\n');
+    const output = logSpy.mock.calls.map((call: unknown[]) => String(call[0])).join('\n');
     expect(output).toContain('expense_report_submit');
     expect(output).toContain('Spesenbericht einreichen');
     expect(output).toContain('resolved');

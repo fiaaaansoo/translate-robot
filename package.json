@@ -15,7 +15,8 @@
     "pretest": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint . && prettier --check .",
+    "typecheck": "tsc -p tsconfig.test.json",
+    "lint": "eslint . && prettier --check . && npm run typecheck",
     "format": "prettier --write ."
   },
   "dependencies": {

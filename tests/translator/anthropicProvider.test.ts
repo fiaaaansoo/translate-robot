@@ -54,7 +54,7 @@ describe('createAnthropicProvider', () => {
     );
 
     const [, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
-    const body = JSON.parse(String(init.body)) as { messages: Array<{ content: string }> };
+    const body = JSON.parse(String(init.body)) as { messages: [{ content: string }] };
     expect(body.messages[0].content).toContain('Ein zu langer Text');
     expect(body.messages[0].content).toContain('shorter');
   });

@@ -127,7 +127,7 @@ describe('openTranslationPr', () => {
   it('includes the key, measured width, iteration count, and component path in the PR body', async () => {
     await open([{ change: change(), result: result({ measuredWidth: 123, iterations: 2 }) }]);
 
-    const body = github.requests[0].body;
+    const body = github.requests[0]!.body;
     expect(body).toContain('greeting');
     expect(body).toContain('123px');
     expect(body).toContain('2 attempt(s)');
@@ -137,16 +137,16 @@ describe('openTranslationPr', () => {
   it('flags an unresolved key clearly in the PR body instead of hiding it', async () => {
     await open([{ change: change(), result: result({ resolved: false }) }]);
 
-    expect(github.requests[0].body).toContain('NOT RESOLVED');
+    expect(github.requests[0]!.body).toContain('NOT RESOLVED');
   });
 
   it('returns null and never pushes or opens a PR when there is nothing to commit', async () => {
-    git = createRecordingGitClient({ committed: false });
+    const noopGit = createRecordingGitClient({ committed: false });
 
-    const outcome = await open([{ change: change(), result: result() }]);
+    const outcome = await open([{ change: change(), result: result() }], { git: noopGit });
 
     expect(outcome).toBeNull();
-    expect(git.calls).toEqual([
+    expect(noopGit.calls).toEqual([
       'createBranch(i18n-de, main)',
       'commitAll(i18n(de): translate 1 key(s))',
     ]);
@@ -154,7 +154,7 @@ describe('openTranslationPr', () => {
   });
 
   it('creates the branch before writing the translated file, so a branch failure leaves the working tree untouched', async () => {
-    git = {
+    const failingGit: GitClient = {
       async createBranch() {
         throw new Error('simulated branch-creation failure');
       },
@@ -164,9 +164,9 @@ describe('openTranslationPr', () => {
       async push() {},
     };
 
-    await expect(open([{ change: change(), result: result() }])).rejects.toThrow(
-      'simulated branch-creation failure',
-    );
+    await expect(
+      open([{ change: change(), result: result() }], { git: failingGit }),
+    ).rejects.toThrow('simulated branch-creation failure');
 
     expect(fs.existsSync(i18nTargetPath)).toBe(false);
   });
