@@ -3,17 +3,17 @@ Lire en français → [README.fr.md](README.fr.md)
 # translate-robot
 
 Translates new UI strings under the real rendered width of their
-component — not a character-count guess. When a translation is too long
+component, not a character-count guess. When a translation is too long
 for the button, tab, or nav item it renders in, translate-robot catches
 that before it ships, not after someone files a screenshot bug.
 
 [![CI](https://github.com/fiaaaansoo/translate-robot/actions/workflows/ci.yml/badge.svg)](https://github.com/fiaaaansoo/translate-robot/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-| Before — naive translation | After — translate-robot |
+| Before: naive translation | After: translate-robot |
 | --- | --- |
 | ![A German translation overflowing past the edge of a blue button](docs/images/before-overflow.png) | ![The same button with a translation that fits](docs/images/after-fit.png) |
-| `"Reichen Sie Ihren monatlichen Spesenbericht ein"` — correct German, too wide for the button. | `"Spesenbericht einreichen"` — same meaning, measured to fit. |
+| `"Reichen Sie Ihren monatlichen Spesenbericht ein"`: correct German, too wide for the button. | `"Spesenbericht einreichen"`: same meaning, measured to fit. |
 
 > No API key needed to see this work: `--dry-run` replays a pre-recorded
 > translation against the toy repo fixture included in this repository.
@@ -24,11 +24,11 @@ npm install && npm run build
 node bin/translate-robot run --repo fixtures/toy-repo --recorded-translations fixtures/toy-repo/translations.recorded.json --target-locale de --dry-run
 ```
 
-That's the exact setup behind the screenshots above —
+That's the exact setup behind the screenshots above:
 [`fixtures/toy-repo/`](fixtures/toy-repo/README.md) is a real HTML
 component and i18n file, not a mockup.
 
-translate-robot opens a pull request with the result — it never merges
+translate-robot opens a pull request with the result. It never merges
 or approves one itself. Every translation gets a human review before it
 reaches production, no exception.
 
@@ -51,7 +51,7 @@ at very different widths.
 translate-robot measures instead of guessing: it renders the actual
 component in headless Chromium (via Playwright), swaps in each candidate
 translation, and compares the node's `scrollWidth` against its
-`clientWidth` — exactly what a real browser would show a real user. If a
+`clientWidth`, exactly what a real browser would show a real user. If a
 translation overflows, it goes back to the LLM with that feedback
 (`"this candidate was 23px too wide, try again"`) for a bounded number of
 attempts.
@@ -84,7 +84,7 @@ This diffs `i18n/en.json` against its version on the base branch,
 translates every added or changed key under its component's measured
 width, writes the result to `i18n/de.json`, and opens a pull request.
 Add `--dry-run` to see the result without writing anything or opening a
-PR — useful in CI, or to sanity-check a run before it touches your repo.
+PR. Useful in CI, or to sanity-check a run before it touches your repo.
 
 Run `node bin/translate-robot run --help` for the full option list
 (source locale catalog path, base branch, retry bound, and more).
@@ -94,7 +94,7 @@ By default, translations come from the Anthropic API
 the branch and open the PR comes from `GITHUB_TOKEN`. Neither is ever
 logged or included in an error message. Sending source strings to
 Anthropic's API means they're processed by that third-party subprocessor
-under your own API key — translate-robot is not a hosted service, so you
+under your own API key. translate-robot is not a hosted service, so you
 remain the data controller for anything you send through it.
 
 ## GitHub Action
@@ -121,7 +121,7 @@ jobs:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
 
-The `permissions` block above is the minimum the Action needs —
+The `permissions` block above is the minimum the Action needs:
 `contents: write` to push the translation branch, `pull-requests: write`
 to open the PR. Scope any token you configure the same way; it never
 needs `admin` access.
@@ -132,7 +132,7 @@ v1 solves one pipeline end to end rather than several partially.
 Current limits, all intentional:
 
 - One source locale, one target locale: English to German.
-- Flat JSON i18n catalogs only — no nested keys, no ICU plural rules, no
+- Flat JSON i18n catalogs only: no nested keys, no ICU plural rules, no
   other formats (Fluent, gettext, etc.).
 - One rendering engine: Chromium, via Playwright.
 - One pull request per run.

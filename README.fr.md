@@ -3,7 +3,7 @@ English version → [README.md](README.md)
 # translate-robot
 
 Traduit les nouvelles chaînes d'interface sous la contrainte réelle de
-largeur rendue de leur composant — pas une estimation au nombre de
+largeur rendue de leur composant, pas une estimation au nombre de
 caractères. Quand une traduction est trop longue pour le bouton, l'onglet
 ou l'élément de navigation où elle s'affiche, translate-robot le détecte
 avant la mise en production, pas après qu'un utilisateur l'ait signalé
@@ -12,10 +12,10 @@ par une capture d'écran.
 [![CI](https://github.com/fiaaaansoo/translate-robot/actions/workflows/ci.yml/badge.svg)](https://github.com/fiaaaansoo/translate-robot/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-| Avant — traduction naïve | Après — translate-robot |
+| Avant : traduction naïve | Après : translate-robot |
 | --- | --- |
 | ![Une traduction allemande qui déborde du bord d'un bouton bleu](docs/images/before-overflow.png) | ![Le même bouton avec une traduction qui tient](docs/images/after-fit.png) |
-| `"Reichen Sie Ihren monatlichen Spesenbericht ein"` — allemand correct, trop large pour le bouton. | `"Spesenbericht einreichen"` — même sens, mesuré pour tenir. |
+| `"Reichen Sie Ihren monatlichen Spesenbericht ein"` : allemand correct, trop large pour le bouton. | `"Spesenbericht einreichen"` : même sens, mesuré pour tenir. |
 
 > Aucune clé API nécessaire pour voir ça marcher : `--dry-run` rejoue une
 > traduction pré-enregistrée sur le repo-jouet fourni dans ce dépôt.
@@ -26,11 +26,11 @@ npm install && npm run build
 node bin/translate-robot run --repo fixtures/toy-repo --recorded-translations fixtures/toy-repo/translations.recorded.json --target-locale de --dry-run
 ```
 
-C'est exactement la configuration derrière les captures ci-dessus —
+C'est exactement la configuration derrière les captures ci-dessus :
 [`fixtures/toy-repo/`](fixtures/toy-repo/README.md) est un vrai composant
 HTML et un vrai fichier i18n, pas une maquette.
 
-translate-robot ouvre une pull request avec le résultat — il ne la merge
+translate-robot ouvre une pull request avec le résultat. Il ne la merge
 ni ne l'approuve jamais lui-même. Chaque traduction passe par une revue
 humaine avant d'arriver en production, sans exception.
 
@@ -53,7 +53,7 @@ se rendre à des largeurs très différentes.
 
 translate-robot mesure au lieu de deviner : il rend le vrai composant
 dans un Chromium headless (via Playwright), insère chaque candidat de
-traduction, et compare le `scrollWidth` du nœud à son `clientWidth` —
+traduction, et compare le `scrollWidth` du nœud à son `clientWidth`,
 exactement ce qu'un vrai navigateur montrerait à un vrai utilisateur. Si
 une traduction déborde, elle repart vers le LLM avec ce retour
 (`"ce candidat dépassait de 23px, réessaie"`) pour un nombre borné de
@@ -87,7 +87,7 @@ Ceci diffe `i18n/en.json` contre sa version sur la branche de base,
 traduit chaque clé ajoutée ou modifiée sous la contrainte de largeur
 mesurée de son composant, écrit le résultat dans `i18n/de.json`, et ouvre
 une pull request. Ajoutez `--dry-run` pour voir le résultat sans rien
-écrire ni ouvrir de PR — utile en CI, ou pour vérifier un run avant qu'il
+écrire ni ouvrir de PR. Utile en CI, ou pour vérifier un run avant qu'il
 ne touche votre dépôt.
 
 Lancez `node bin/translate-robot run --help` pour la liste complète des
@@ -99,7 +99,7 @@ Par défaut, les traductions viennent de l'API Anthropic
 pousser la branche et ouvrir la PR vient de `GITHUB_TOKEN`. Ni l'un ni
 l'autre n'est jamais loggué ni inclus dans un message d'erreur. Envoyer
 des chaînes source à l'API Anthropic signifie qu'elles sont traitées par
-ce sous-traitant tiers via votre propre clé API — translate-robot n'est
+ce sous-traitant tiers via votre propre clé API. translate-robot n'est
 pas un service hébergé, vous restez donc responsable du traitement de ce
 que vous lui envoyez.
 
@@ -127,7 +127,7 @@ jobs:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
 
-Le bloc `permissions` ci-dessus est le minimum nécessaire à l'Action —
+Le bloc `permissions` ci-dessus est le minimum nécessaire à l'Action :
 `contents: write` pour pousser la branche de traduction,
 `pull-requests: write` pour ouvrir la PR. Donnez le même scope à tout
 jeton que vous configurez ; il n'a jamais besoin d'accès `admin`.
@@ -138,7 +138,7 @@ La v1 résout un pipeline complet plutôt que plusieurs à moitié. Limites
 actuelles, toutes volontaires :
 
 - Une langue source, une langue cible : anglais vers allemand.
-- Catalogues i18n JSON plats uniquement — pas de clés imbriquées, pas de
+- Catalogues i18n JSON plats uniquement : pas de clés imbriquées, pas de
   règles de pluriel ICU, pas d'autre format (Fluent, gettext, etc.).
 - Un seul moteur de rendu : Chromium, via Playwright.
 - Une pull request par run.
