@@ -6,6 +6,13 @@ import { createCli } from '../../src/cli/index.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 
+/** Joins every argument of every console call, not just the first - a secret
+ * passed as a second argument (e.g. console.error('failed:', err)) would
+ * otherwise go unnoticed by a check that only looks at call[0]. */
+function joinCalls(calls: unknown[][]): string {
+  return calls.map((args) => args.map(String).join(' ')).join('\n');
+}
+
 describe('createCli (real argv parsing, real toy-repo fixture, no network)', () => {
   const previousKey = process.env.ANTHROPIC_API_KEY;
   let logSpy: ReturnType<typeof vi.spyOn>;
@@ -49,7 +56,7 @@ describe('createCli (real argv parsing, real toy-repo fixture, no network)', () 
       { from: 'node' },
     );
 
-    const output = logSpy.mock.calls.map((call: unknown[]) => String(call[0])).join('\n');
+    const output = joinCalls(logSpy.mock.calls as unknown[][]);
     expect(output).toContain('expense_report_submit');
     expect(output).toContain('Spesenbericht einreichen');
     expect(output).toContain('resolved');
@@ -57,36 +64,47 @@ describe('createCli (real argv parsing, real toy-repo fixture, no network)', () 
     expect(errorSpy).not.toHaveBeenCalled();
   }, 30_000);
 
-  it('never prints the Anthropic API key to stdout/stderr, even while it sits in the environment throughout a run', async () => {
+  it('never prints the Anthropic API key, even once the real provider is constructed with it', async () => {
     const SECRET = 'sk-ant-cli-test-sentinel-do-not-leak';
-    process.env.ANTHROPIC_API_KEY = SECRET;
     const fixtureRoot = path.join(REPO_ROOT, 'fixtures', 'toy-repo');
-    const program = createCli();
+    process.env.ANTHROPIC_API_KEY = SECRET;
 
-    await program.parseAsync(
-      [
-        'node',
-        'translate-robot',
-        'run',
-        '--repo',
-        fixtureRoot,
-        '--new-i18n',
-        path.join(fixtureRoot, 'i18n', 'en.json'),
-        '--mapping',
-        path.join(fixtureRoot, 'i18n-map.json'),
-        '--recorded-translations',
-        path.join(fixtureRoot, 'translations.recorded.json'),
-        '--target-locale',
-        'de',
-        '--dry-run',
-      ],
-      { from: 'node' },
-    );
+    try {
+      const program = createCli();
 
-    const allOutput = [...logSpy.mock.calls, ...errorSpy.mock.calls]
-      .map((call: unknown[]) => String(call[0]))
-      .join('\n');
-    expect(allOutput).not.toContain(SECRET);
+      // No --recorded-translations, so runPipeline builds the real
+      // createAnthropicProvider() (reading the key into memory) instead of
+      // the fixture provider - the exact construction path the previous
+      // version of this test never actually exercised. --old-i18n is the
+      // same file as --new-i18n (zero diff), so extraction.changes is
+      // empty and no translate() call - hence no real network request -
+      // ever happens, while the real provider still got built with the
+      // real key for the whole run.
+      await program.parseAsync(
+        [
+          'node',
+          'translate-robot',
+          'run',
+          '--repo',
+          fixtureRoot,
+          '--old-i18n',
+          path.join(fixtureRoot, 'i18n', 'en.json'),
+          '--new-i18n',
+          path.join(fixtureRoot, 'i18n', 'en.json'),
+          '--mapping',
+          path.join(fixtureRoot, 'i18n-map.json'),
+          '--target-locale',
+          'de',
+          '--dry-run',
+        ],
+        { from: 'node' },
+      );
+
+      const allOutput = joinCalls([...logSpy.mock.calls, ...errorSpy.mock.calls] as unknown[][]);
+      expect(allOutput).not.toContain(SECRET);
+    } finally {
+      delete process.env.ANTHROPIC_API_KEY;
+    }
   }, 30_000);
 
   it('rejects full mode without --owner/--repo-name, never attempting a real LLM or GitHub call', async () => {
