@@ -33,3 +33,17 @@ export interface ExtractionResult {
   changes: ExtractedChange[];
   errors: ExtractionError[];
 }
+
+/**
+ * Outcome of translating one key under its component's measured width
+ * constraint (task 05). `resolved: false` means every attempt up to the
+ * retry bound still overflowed - `translatedText` is the last (shortest)
+ * attempt, returned so task 06 can flag it rather than silently drop it.
+ */
+export interface TranslationResult {
+  key: string;
+  translatedText: string;
+  measuredWidth: number;
+  iterations: number;
+  resolved: boolean;
+}
