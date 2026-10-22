@@ -103,6 +103,34 @@ ce sous-traitant tiers via votre propre clé API. translate-robot n'est
 pas un service hébergé, vous restez donc responsable du traitement de ce
 que vous lui envoyez.
 
+### Utiliser un modèle auto-hébergé à la place
+
+Passez `--llm-provider openai-compatible` pour traduire via n'importe
+quel serveur qui parle l'API de complétion de chat OpenAI, comme une
+instance auto-hébergée d'Ollama ou de vLLM, à la place de l'API
+Anthropic :
+
+```bash
+node bin/translate-robot run \
+  --new-i18n i18n/en.json \
+  --mapping i18n-map.json \
+  --target-locale de \
+  --owner <propriétaire-github> \
+  --repo-name <nom-du-repo-github> \
+  --llm-provider openai-compatible \
+  --llm-base-url http://localhost:11434/v1 \
+  --llm-model llama3
+```
+
+`--llm-base-url` et `--llm-model` sont tous les deux obligatoires avec ce
+provider ; aucun des deux n'a de valeur par défaut, pour qu'un oubli
+échoue bruyamment plutôt que de basculer silencieusement vers le mauvais
+serveur. Les chaînes source ne quittent jamais le serveur désigné par
+`--llm-base-url` dans ce mode. Si ce serveur exige une clé API, définissez
+`TRANSLATE_ROBOT_LLM_API_KEY` ; la plupart des déploiements auto-hébergés
+n'en exigent aucune. Un seul provider tourne par invocation ; il n'y a
+pas de bascule automatique entre providers.
+
 ## GitHub Action
 
 ```yaml
@@ -132,6 +160,12 @@ Le bloc `permissions` ci-dessus est le minimum nécessaire à l'Action :
 `pull-requests: write` pour ouvrir la PR. Donnez le même scope à tout
 jeton que vous configurez ; il n'a jamais besoin d'accès `admin`.
 
+Pour traduire via un modèle auto-hébergé à la place, remplacez
+`anthropic-api-key` par `llm-provider: openai-compatible`,
+`llm-base-url`, et `llm-model` (voir
+[Utiliser un modèle auto-hébergé à la place](#utiliser-un-modèle-auto-hébergé-à-la-place)
+ci-dessus pour le rôle de chacun).
+
 ## Périmètre v1
 
 La v1 résout un pipeline complet plutôt que plusieurs à moitié. Limites
@@ -142,10 +176,14 @@ actuelles, toutes volontaires :
   règles de pluriel ICU, pas d'autre format (Fluent, gettext, etc.).
 - Un seul moteur de rendu : Chromium, via Playwright.
 - Une pull request par run.
+- Un seul provider de traduction par run : soit l'API Anthropic, soit un
+  unique serveur OpenAI-compatible configuré, jamais les deux, sans
+  bascule automatique de l'un vers l'autre.
 
 Pas encore construit : langues cibles supplémentaires, catalogues
 imbriqués/structurés, autres moteurs de rendu, regroupement de plusieurs
-runs dans une seule PR.
+runs dans une seule PR, bascule automatique entre providers de
+traduction.
 
 Sans rapport avec le périmètre v1 et qui ne changera pas :
 translate-robot ne merge ni n'approuve jamais une pull request lui-même.

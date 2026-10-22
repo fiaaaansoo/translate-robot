@@ -132,4 +132,50 @@ describe('createCli (real argv parsing, real toy-repo fixture, no network)', () 
       ),
     ).rejects.toThrow(/--owner/);
   }, 30_000);
+
+  it('never prints the self-hosted LLM API key, even once the real openai-compatible provider is constructed with it', async () => {
+    const SECRET = 'local-gateway-cli-test-sentinel-do-not-leak';
+    const fixtureRoot = path.join(REPO_ROOT, 'fixtures', 'toy-repo');
+    process.env.TRANSLATE_ROBOT_LLM_API_KEY = SECRET;
+
+    try {
+      const program = createCli();
+
+      // Same zero-diff trick as the Anthropic secret test above: --old-i18n
+      // equals --new-i18n, so extraction.changes is empty and translate()
+      // never runs - no real network request - while the real provider
+      // still gets constructed (and reads the key into memory) for the
+      // whole run.
+      await program.parseAsync(
+        [
+          'node',
+          'translate-robot',
+          'run',
+          '--repo',
+          fixtureRoot,
+          '--old-i18n',
+          path.join(fixtureRoot, 'i18n', 'en.json'),
+          '--new-i18n',
+          path.join(fixtureRoot, 'i18n', 'en.json'),
+          '--mapping',
+          path.join(fixtureRoot, 'i18n-map.json'),
+          '--target-locale',
+          'de',
+          '--llm-provider',
+          'openai-compatible',
+          '--llm-base-url',
+          'http://localhost:11434/v1',
+          '--llm-model',
+          'llama3',
+          '--dry-run',
+        ],
+        { from: 'node' },
+      );
+
+      const allOutput = joinCalls([...logSpy.mock.calls, ...errorSpy.mock.calls] as unknown[][]);
+      expect(allOutput).not.toContain(SECRET);
+    } finally {
+      delete process.env.TRANSLATE_ROBOT_LLM_API_KEY;
+    }
+  }, 30_000);
 });

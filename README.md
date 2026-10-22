@@ -97,6 +97,32 @@ Anthropic's API means they're processed by that third-party subprocessor
 under your own API key. translate-robot is not a hosted service, so you
 remain the data controller for anything you send through it.
 
+### Using a self-hosted model instead
+
+Pass `--llm-provider openai-compatible` to translate against any server
+that speaks the OpenAI chat completions API, such as a self-hosted
+Ollama or vLLM instance, instead of the Anthropic API:
+
+```bash
+node bin/translate-robot run \
+  --new-i18n i18n/en.json \
+  --mapping i18n-map.json \
+  --target-locale de \
+  --owner <github-owner> \
+  --repo-name <github-repo> \
+  --llm-provider openai-compatible \
+  --llm-base-url http://localhost:11434/v1 \
+  --llm-model llama3
+```
+
+`--llm-base-url` and `--llm-model` are both required with this provider;
+neither has a default, so a missing one fails loudly instead of silently
+falling back to a wrong host. Source strings never leave the server at
+`--llm-base-url` in this mode. If that server needs an API key, set
+`TRANSLATE_ROBOT_LLM_API_KEY`; most self-hosted setups need none. One
+provider runs per invocation; there is no automatic fallback between
+providers.
+
 ## GitHub Action
 
 ```yaml
@@ -126,6 +152,12 @@ The `permissions` block above is the minimum the Action needs:
 to open the PR. Scope any token you configure the same way; it never
 needs `admin` access.
 
+To translate against a self-hosted model instead, replace
+`anthropic-api-key` with `llm-provider: openai-compatible`,
+`llm-base-url`, and `llm-model` (see
+[Using a self-hosted model instead](#using-a-self-hosted-model-instead)
+above for what each one does).
+
 ## v1 scope
 
 v1 solves one pipeline end to end rather than several partially.
@@ -136,9 +168,13 @@ Current limits, all intentional:
   other formats (Fluent, gettext, etc.).
 - One rendering engine: Chromium, via Playwright.
 - One pull request per run.
+- One translation provider per run: either the Anthropic API or a single
+  configured OpenAI-compatible server, never both, with no automatic
+  fallback from one to the other.
 
 Not yet built: additional target languages, nested/structured catalogs,
-other browser engines, batching several runs into a single PR.
+other browser engines, batching several runs into a single PR, falling
+back between translation providers.
 
 Unrelated to v1 scope and not going to change: translate-robot never
 merges or approves a pull request. Every translation goes through human

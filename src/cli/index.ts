@@ -6,6 +6,7 @@ import { extractChangesFromFiles } from '../extractor/index.js';
 import { translateAndValidate } from '../translator/index.js';
 import { createFixtureProvider } from '../translator/fixtureProvider.js';
 import { createAnthropicProvider } from '../translator/anthropicProvider.js';
+import { createOpenAiCompatibleProvider } from '../translator/openAiCompatibleProvider.js';
 import { openTranslationPr } from '../pr/index.js';
 import type { PrChangeSummary } from '../pr/index.js';
 import type { GitClient } from '../pr/git.js';
@@ -27,6 +28,12 @@ export interface RunOptions {
   dryRun: boolean;
   /** Use pre-recorded translations instead of a real LLM call (for demos/tests, no API key needed). */
   recordedTranslations?: string;
+  /** Which backend to translate with. Default 'anthropic'; 'openai-compatible' talks to a self-hosted Ollama/vLLM/etc. server instead. */
+  llmProvider?: 'anthropic' | 'openai-compatible';
+  /** Required when llmProvider is 'openai-compatible'. */
+  llmBaseUrl?: string;
+  /** Model name for whichever provider is selected; each provider has its own default when omitted. */
+  llmModel?: string;
   /** Required outside --dry-run. */
   owner?: string;
   repoName?: string;
@@ -89,6 +96,16 @@ async function translateAllChanges(
  * createCli() below for the command-line wiring around it.
  */
 export async function runPipeline(options: RunOptions): Promise<RunOutcome> {
+  if (
+    options.llmProvider !== undefined &&
+    options.llmProvider !== 'anthropic' &&
+    options.llmProvider !== 'openai-compatible'
+  ) {
+    throw new Error(
+      `translate-robot: unrecognized --llm-provider "${options.llmProvider}" (expected "anthropic" or "openai-compatible")`,
+    );
+  }
+
   const extraction = extractChangesFromFiles({
     newI18nPath: options.newI18n,
     mappingPath: options.mapping,
@@ -97,7 +114,12 @@ export async function runPipeline(options: RunOptions): Promise<RunOutcome> {
 
   const provider = options.recordedTranslations
     ? createFixtureProvider(options.recordedTranslations)
-    : createAnthropicProvider();
+    : options.llmProvider === 'openai-compatible'
+      ? createOpenAiCompatibleProvider({
+          baseUrl: options.llmBaseUrl ?? '',
+          model: options.llmModel ?? '',
+        })
+      : createAnthropicProvider(options.llmModel ? { model: options.llmModel } : {});
 
   const { results, summaries } = await translateAllChanges(extraction.changes, provider, options);
 
@@ -167,6 +189,16 @@ export function createCli(): Command {
       '--recorded-translations <path>',
       'use pre-recorded translations instead of calling a real LLM (for demos/tests - no API key needed)',
     )
+    .option(
+      '--llm-provider <provider>',
+      'translation backend: anthropic (default) or openai-compatible (a self-hosted Ollama/vLLM/etc. server - no source text ever leaves your infrastructure)',
+      'anthropic',
+    )
+    .option(
+      '--llm-base-url <url>',
+      'base URL of an OpenAI-compatible chat completions API; required with --llm-provider openai-compatible',
+    )
+    .option('--llm-model <name>', 'model name for the selected provider (each has its own default)')
     .option('--dry-run', 'extract, translate, and measure only - write nothing, open no PR')
     .option('--owner <owner>', 'GitHub repository owner (required outside --dry-run)')
     .option('--repo-name <name>', 'GitHub repository name (required outside --dry-run)')
@@ -201,10 +233,13 @@ export function createCli(): Command {
         baseBranch: opts.baseBranch as string,
         branchName: (opts.branchName as string | undefined) ?? `i18n-${targetLocale}`,
         maxAttempts: opts.maxAttempts as number,
+        llmProvider: opts.llmProvider as 'anthropic' | 'openai-compatible',
         ...(opts.oldI18n ? { oldI18n: path.resolve(opts.oldI18n as string) } : {}),
         ...(opts.recordedTranslations
           ? { recordedTranslations: path.resolve(opts.recordedTranslations as string) }
           : {}),
+        ...(opts.llmBaseUrl ? { llmBaseUrl: opts.llmBaseUrl as string } : {}),
+        ...(opts.llmModel ? { llmModel: opts.llmModel as string } : {}),
         ...(opts.owner ? { owner: opts.owner as string } : {}),
         ...(opts.repoName ? { repoName: opts.repoName as string } : {}),
       };

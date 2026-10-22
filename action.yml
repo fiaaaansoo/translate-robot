@@ -46,7 +46,20 @@ inputs:
     description: 'Path to a pre-recorded translations file, for demos/tests without a real LLM call.'
     required: false
   anthropic-api-key:
-    description: 'Anthropic API key. Required unless dry-run with recorded-translations. Never logged.'
+    description: 'Anthropic API key. Used unless llm-provider is openai-compatible, or dry-run with recorded-translations. Never logged.'
+    required: false
+  llm-provider:
+    description: 'Translation backend: anthropic (default) or openai-compatible (a self-hosted Ollama/vLLM/etc. server - no source text ever leaves your own infrastructure).'
+    required: false
+    default: 'anthropic'
+  llm-base-url:
+    description: 'Base URL of an OpenAI-compatible chat completions API. Required when llm-provider is openai-compatible.'
+    required: false
+  llm-model:
+    description: 'Model name for the selected provider. Required when llm-provider is openai-compatible; optional override otherwise.'
+    required: false
+  llm-api-key:
+    description: 'API key for the openai-compatible provider, if the self-hosted server requires one. Never logged.'
     required: false
   github-token:
     description: 'GitHub token used to push the translation branch and open the pull request. Never logged.'
@@ -127,6 +140,7 @@ runs:
       env:
         ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
+        TRANSLATE_ROBOT_LLM_API_KEY: ${{ inputs.llm-api-key }}
       run: |
         args=(
           run
@@ -137,6 +151,7 @@ runs:
           --base-branch "${{ inputs.base-branch }}"
           --owner "${{ inputs.owner || github.repository_owner }}"
           --repo-name "${{ inputs.repo-name || github.event.repository.name }}"
+          --llm-provider "${{ inputs.llm-provider }}"
         )
         if [ -n "${{ steps.resolve-old-i18n.outputs.path }}" ]; then
           args+=(--old-i18n "${{ steps.resolve-old-i18n.outputs.path }}")
@@ -146,6 +161,12 @@ runs:
         fi
         if [ -n "${{ inputs.recorded-translations }}" ]; then
           args+=(--recorded-translations "${{ inputs.recorded-translations }}")
+        fi
+        if [ -n "${{ inputs.llm-base-url }}" ]; then
+          args+=(--llm-base-url "${{ inputs.llm-base-url }}")
+        fi
+        if [ -n "${{ inputs.llm-model }}" ]; then
+          args+=(--llm-model "${{ inputs.llm-model }}")
         fi
         if [ "${{ inputs.dry-run }}" = "true" ]; then
           args+=(--dry-run)

@@ -1,4 +1,5 @@
 import type { TranslateRequest, TranslationProvider } from './provider.js';
+import { buildTranslationPrompt } from './buildPrompt.js';
 
 const DEFAULT_MODEL = 'claude-haiku-4-5';
 const API_URL = 'https://api.anthropic.com/v1/messages';
@@ -11,27 +12,6 @@ export interface AnthropicProviderOptions {
   model?: string;
   /** Injectable for testing; defaults to the global fetch. */
   fetchImpl?: typeof fetch;
-}
-
-function buildPrompt(request: TranslateRequest): string {
-  const lines = [
-    `Translate the following UI string from English to locale "${request.targetLocale}".`,
-    `It must fit visually within ${request.targetWidthPx}px of rendered width - prefer the shortest natural phrasing.`,
-    `Reply with ONLY the translated text, no quotes, no explanation.`,
-    ``,
-    `Source text: ${request.sourceText}`,
-  ];
-
-  if (request.previousAttempts.length > 0) {
-    lines.push('', 'Previous attempts overflowed the available width - make the next one shorter:');
-    for (const attempt of request.previousAttempts) {
-      lines.push(
-        `- "${attempt.text}" (${attempt.measuredWidth}px, needed ${attempt.clientWidth}px)`,
-      );
-    }
-  }
-
-  return lines.join('\n');
 }
 
 /**
@@ -65,7 +45,7 @@ export function createAnthropicProvider(
         body: JSON.stringify({
           model,
           max_tokens: 256,
-          messages: [{ role: 'user', content: buildPrompt(request) }],
+          messages: [{ role: 'user', content: buildTranslationPrompt(request) }],
         }),
       });
 

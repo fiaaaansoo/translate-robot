@@ -171,6 +171,44 @@ describe('runPipeline (unit, temp fixture, fake git/github)', () => {
       }
     }
   }, 30_000);
+
+  it('rejects an unrecognized --llm-provider value before attempting any translation', async () => {
+    const { recordedTranslations, ...rest } = baseOptions();
+    void recordedTranslations;
+
+    await expect(
+      runPipeline({ ...rest, llmProvider: 'bogus' as never, dryRun: true }),
+    ).rejects.toThrow(/llm-provider/);
+  });
+
+  it('rejects llm-provider openai-compatible without a configured baseUrl/model', async () => {
+    const { recordedTranslations, ...rest } = baseOptions();
+    void recordedTranslations;
+
+    await expect(
+      runPipeline({ ...rest, llmProvider: 'openai-compatible', dryRun: true }),
+    ).rejects.toThrow(/baseUrl/);
+  });
+
+  it('builds the openai-compatible provider (not Anthropic) for a zero-diff run, with no network call needed', async () => {
+    const { recordedTranslations, ...rest } = baseOptions();
+    void recordedTranslations;
+
+    // newI18n as its own oldI18n: zero diff, so translateAllChanges never
+    // calls provider.translate() - this only has to prove the right
+    // provider gets constructed (baseUrl/model accepted), not reach the
+    // network.
+    const outcome = await runPipeline({
+      ...rest,
+      oldI18n: rest.newI18n,
+      llmProvider: 'openai-compatible',
+      llmBaseUrl: 'http://localhost:11434/v1',
+      llmModel: 'llama3',
+      dryRun: true,
+    });
+
+    expect(outcome.results).toEqual([]);
+  });
 });
 
 describe('runPipeline (end to end, real fixtures/toy-repo, no network)', () => {
