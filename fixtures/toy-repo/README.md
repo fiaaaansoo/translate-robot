@@ -26,6 +26,13 @@ méthode que celle que l'étape de mesure (tâche 05) devra automatiser.
   directement dans un navigateur ou en headless). Contient le texte
   source anglais tel qu'il existe dans le "vrai" repo avant traduction.
 - `i18n/en.json` — fichier i18n source, plat, une clé par chaîne UI.
+- `i18n/en.before.json` — même fichier *avant* l'ajout de la clé
+  (catalogue vide), utilisé comme `--old-i18n` par le workflow de
+  démo (`.github/workflows/translate-robot-example.yml`) pour que la
+  démo trouve un vrai diff et exerce tout le pipeline, plutôt que de
+  dépendre de la résolution git de l'Action (qui tourne ici sur la même
+  branche/commit qu'elle-même — un diff d'un fichier contre lui-même
+  serait toujours vide).
 - `i18n-map.json` — mapping **clé → composant** déclaré explicitement
   (pas d'inférence AST en v1, cf. décision CEO/architect). Schéma :
 

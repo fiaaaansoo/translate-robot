@@ -34,6 +34,18 @@ jobs:
         uses: ./
         with:
           repo: fixtures/toy-repo
+          # old-i18n is given explicitly as a committed "before" fixture
+          # rather than left to the action's own git-based resolution:
+          # this demo runs the action against the same branch/commit it
+          # is defined on, so resolving the base-branch state from git
+          # would always diff an unchanged file against itself (an empty
+          # diff - nothing to translate, nothing to measure). A real PR
+          # from a feature branch does not have this problem, which is
+          # why the git-based resolution is the action's default and
+          # stays covered by its own fixtures/empirical verification
+          # (see 08-github-action-wrapper.md); this input is specific to
+          # making the demo actually exercise the pipeline.
+          old-i18n: i18n/en.before.json
           new-i18n: i18n/en.json
           mapping: i18n-map.json
           recorded-translations: translations.recorded.json
