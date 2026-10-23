@@ -82,7 +82,7 @@ runs:
       run: echo "path=$(realpath "$ACTION_PATH/package-lock.json")" >> "$GITHUB_OUTPUT"
 
     - name: Set up Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v7
       with:
         node-version: '22'
         cache: 'npm'
