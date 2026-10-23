@@ -31,7 +31,7 @@ fs.mkdirSync(outDir, { recursive: true });
 
 const browser = await chromium.launch();
 const page = await browser.newPage({
-  viewport: { width: 1400, height: 400 },
+  viewport: { width: 1400, height: 800 },
   deviceScaleFactor: 2,
 });
 await page.goto(`file://${componentPath}`);
@@ -39,14 +39,42 @@ await page.evaluate((zoom) => {
   document.body.style.zoom = String(zoom);
 }, ZOOM);
 
+const SOURCE = 'Submit your monthly expense report';
+
 async function capture(text, outFile) {
-  await page.evaluate((t) => {
-    document.getElementById('expense-report-submit').textContent = t;
-  }, text);
+  await page.evaluate(
+    ({ t, source }) => {
+      document.getElementById('expense-report-submit').textContent = t;
+      // Caption above the real component: the English source string and the
+      // measured result, so the screenshot reads on its own in the README.
+      let caption = document.getElementById('shot-caption');
+      if (!caption) {
+        caption = document.createElement('div');
+        caption.id = 'shot-caption';
+        caption.style.cssText =
+          'font: 13px/1.5 ui-monospace, Consolas, monospace; color: #374151; margin-bottom: 8px;';
+        const toolbar = document.querySelector('.toolbar');
+        const shot = document.createElement('div');
+        shot.id = 'shot';
+        shot.style.cssText = 'width: fit-content;';
+        toolbar.parentNode.insertBefore(shot, toolbar);
+        shot.appendChild(caption);
+        shot.appendChild(toolbar);
+      }
+      const btn = document.getElementById('expense-report-submit');
+      const over = btn.scrollWidth - btn.clientWidth;
+      const verdict =
+        over > 0
+          ? '<b style="color:#b91c1c">overflows: ' + over + 'px too wide</b>'
+          : '<b style="color:#15803d">fits the ' + btn.clientWidth + 'px button</b>';
+      caption.innerHTML = 'en: ' + source + '<br>de: ' + verdict;
+    },
+    { t: text, source: SOURCE },
+  );
   const info = await page.evaluate(() => {
     const btn = document.getElementById('expense-report-submit');
-    const toolbar = document.querySelector('.toolbar');
-    const rect = toolbar.getBoundingClientRect();
+    const shot = document.getElementById('shot');
+    const rect = shot.getBoundingClientRect();
     return {
       clientWidth: btn.clientWidth,
       scrollWidth: btn.scrollWidth,
