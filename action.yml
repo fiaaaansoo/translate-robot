@@ -50,7 +50,7 @@ inputs:
     description: 'Anthropic API key. Used unless llm-provider is openai-compatible, or dry-run with recorded-translations. Never logged.'
     required: false
   llm-provider:
-    description: 'Translation backend: anthropic (default) or openai-compatible (a self-hosted Ollama/vLLM/etc. server - no source text ever leaves your own infrastructure).'
+    description: 'Translation backend: anthropic (default) or openai-compatible (a self-hosted Ollama/vLLM/etc. server - source text is sent only to the server at llm-base-url).'
     required: false
     default: 'anthropic'
   llm-base-url:
@@ -77,7 +77,9 @@ runs:
     - name: Resolve this action's own lockfile path
       id: resolve-lockfile
       shell: bash
-      run: echo "path=$(realpath "${{ github.action_path }}/package-lock.json")" >> "$GITHUB_OUTPUT"
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+      run: echo "path=$(realpath "$ACTION_PATH/package-lock.json")" >> "$GITHUB_OUTPUT"
 
     - name: Set up Node.js
       uses: actions/setup-node@v4
@@ -118,9 +120,13 @@ runs:
       id: resolve-old-i18n
       shell: bash
       working-directory: ${{ inputs.repo }}
+      env:
+        INPUT_OLD_I18N: ${{ inputs.old-i18n }}
+        INPUT_NEW_I18N: ${{ inputs.new-i18n }}
+        INPUT_BASE_BRANCH: ${{ inputs.base-branch }}
       run: |
-        if [ -n "${{ inputs.old-i18n }}" ]; then
-          echo "path=${{ inputs.old-i18n }}" >> "$GITHUB_OUTPUT"
+        if [ -n "$INPUT_OLD_I18N" ]; then
+          echo "path=$INPUT_OLD_I18N" >> "$GITHUB_OUTPUT"
           exit 0
         fi
         # No explicit --old-i18n: resolve the pre-change catalog from git
@@ -129,7 +135,7 @@ runs:
         # (first-ever add) is not an error - the CLI already treats a
         # missing/omitted old-i18n path as an empty catalog.
         resolved="$(mktemp)"
-        if git show "origin/${{ inputs.base-branch }}:./${{ inputs.new-i18n }}" > "$resolved" 2>/dev/null; then
+        if git show "origin/$INPUT_BASE_BRANCH:./$INPUT_NEW_I18N" > "$resolved" 2>/dev/null; then
           echo "path=$resolved" >> "$GITHUB_OUTPUT"
         else
           echo "path=" >> "$GITHUB_OUTPUT"
@@ -142,34 +148,50 @@ runs:
         ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
         TRANSLATE_ROBOT_LLM_API_KEY: ${{ inputs.llm-api-key }}
+        # Inputs go through env vars, never interpolated into the script,
+        # so an untrusted value cannot inject shell commands.
+        INPUT_NEW_I18N: ${{ inputs.new-i18n }}
+        INPUT_MAPPING: ${{ inputs.mapping }}
+        INPUT_TARGET_LOCALE: ${{ inputs.target-locale }}
+        INPUT_BASE_BRANCH: ${{ inputs.base-branch }}
+        INPUT_OWNER: ${{ inputs.owner || github.repository_owner }}
+        INPUT_REPO_NAME: ${{ inputs.repo-name || github.event.repository.name }}
+        INPUT_LLM_PROVIDER: ${{ inputs.llm-provider }}
+        INPUT_OLD_I18N_RESOLVED: ${{ steps.resolve-old-i18n.outputs.path }}
+        INPUT_I18N_TARGET: ${{ inputs.i18n-target }}
+        INPUT_RECORDED: ${{ inputs.recorded-translations }}
+        INPUT_LLM_BASE_URL: ${{ inputs.llm-base-url }}
+        INPUT_LLM_MODEL: ${{ inputs.llm-model }}
+        INPUT_DRY_RUN: ${{ inputs.dry-run }}
+        ACTION_PATH: ${{ github.action_path }}
       run: |
         args=(
           run
           --repo .
-          --new-i18n "${{ inputs.new-i18n }}"
-          --mapping "${{ inputs.mapping }}"
-          --target-locale "${{ inputs.target-locale }}"
-          --base-branch "${{ inputs.base-branch }}"
-          --owner "${{ inputs.owner || github.repository_owner }}"
-          --repo-name "${{ inputs.repo-name || github.event.repository.name }}"
-          --llm-provider "${{ inputs.llm-provider }}"
+          --new-i18n "$INPUT_NEW_I18N"
+          --mapping "$INPUT_MAPPING"
+          --target-locale "$INPUT_TARGET_LOCALE"
+          --base-branch "$INPUT_BASE_BRANCH"
+          --owner "$INPUT_OWNER"
+          --repo-name "$INPUT_REPO_NAME"
+          --llm-provider "$INPUT_LLM_PROVIDER"
         )
-        if [ -n "${{ steps.resolve-old-i18n.outputs.path }}" ]; then
-          args+=(--old-i18n "${{ steps.resolve-old-i18n.outputs.path }}")
+        if [ -n "$INPUT_OLD_I18N_RESOLVED" ]; then
+          args+=(--old-i18n "$INPUT_OLD_I18N_RESOLVED")
         fi
-        if [ -n "${{ inputs.i18n-target }}" ]; then
-          args+=(--i18n-target "${{ inputs.i18n-target }}")
+        if [ -n "$INPUT_I18N_TARGET" ]; then
+          args+=(--i18n-target "$INPUT_I18N_TARGET")
         fi
-        if [ -n "${{ inputs.recorded-translations }}" ]; then
-          args+=(--recorded-translations "${{ inputs.recorded-translations }}")
+        if [ -n "$INPUT_RECORDED" ]; then
+          args+=(--recorded-translations "$INPUT_RECORDED")
         fi
-        if [ -n "${{ inputs.llm-base-url }}" ]; then
-          args+=(--llm-base-url "${{ inputs.llm-base-url }}")
+        if [ -n "$INPUT_LLM_BASE_URL" ]; then
+          args+=(--llm-base-url "$INPUT_LLM_BASE_URL")
         fi
-        if [ -n "${{ inputs.llm-model }}" ]; then
-          args+=(--llm-model "${{ inputs.llm-model }}")
+        if [ -n "$INPUT_LLM_MODEL" ]; then
+          args+=(--llm-model "$INPUT_LLM_MODEL")
         fi
-        if [ "${{ inputs.dry-run }}" = "true" ]; then
+        if [ "$INPUT_DRY_RUN" = "true" ]; then
           args+=(--dry-run)
         fi
-        node "${{ github.action_path }}/bin/translate-robot" "${args[@]}"
+        node "$ACTION_PATH/bin/translate-robot" "${args[@]}"

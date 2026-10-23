@@ -12,20 +12,19 @@ work with you on a fix and a disclosure timeline.
 GitHub token (App or PAT, minimal scope: read/write on language files +
 opening a PR, never `admin`) and the translation/LLM service's API key:
 environment variables only, never committed, never logged in clear text,
-never echoed back in an agent response or a commit/PR message.
+never echoed back in a log, a commit or a PR message.
 
 ## Auth boundaries
 
-No end-user-facing service at this stage (agents/CI only) — so no
-client-side session/token to consider yet. Revisit this file before
-exposing a dashboard or a control-plane API.
+translate-robot is a CLI and a GitHub Action. It exposes no
+end-user-facing service, so there is no session or token to protect on
+that side. Revisit this file if a hosted component is ever added.
 
 ## Sensitive data / PII
 
-The robot itself does not process personal data: it reads i18n keys and
-UI text, not user data. Be careful if a translation key accidentally
-contains product text or PII — never relay it into a public log or a PR
-without checking first.
+translate-robot handles i18n keys and UI strings, which normally contain
+no personal data. If a string accidentally contains personal data, do not
+relay it into a public log or a PR without checking first.
 
 ## Translations are LLM output
 
@@ -37,14 +36,15 @@ this is enforced structurally (the tool never merges or approves a PR
 itself, cf. CONTRIBUTING.md), but the human review itself is a content
 safeguard the tool cannot provide.
 
-Source strings sent to the configured LLM provider (the Anthropic API,
-by default) are processed by that third-party subprocessor under your
-own API key. translate-robot is not a hosted service: you remain the
-data controller for anything you send through it.
+Source strings are sent to the configured LLM provider (the Anthropic
+API by default) under your own API key, and are governed by your
+agreement with that provider. translate-robot is not a hosted service and
+its author receives none of your data: you are responsible for what you
+send through it.
 
-## Pre-production checklist
+## Before you run it in production
 
 - Never auto-merge a translation PR (cf. CONTRIBUTING.md).
-- Rate limiting / minimal scope on the GitHub token the robot uses -
+- Minimal scope on the GitHub token the robot uses:
   `contents: write` and `pull-requests: write` only, never `admin`.
 - Verify no API key appears in CI logs or in the body of a generated PR.

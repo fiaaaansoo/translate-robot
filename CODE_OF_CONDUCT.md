@@ -60,11 +60,10 @@ an appointed representative at an online or offline event.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the community leaders responsible for enforcement by opening a
-[GitHub issue](https://github.com/fiaaaansoo/translate-robot/issues) labeled
-`conduct`, or, for reports that should stay private, through a
+reported to the community leaders responsible for enforcement through a
 [private security advisory](https://github.com/fiaaaansoo/translate-robot/security/advisories/new)
-on this repository. All complaints will be reviewed and investigated
+on this repository. Please do not report conduct issues in a public
+issue: they should stay private. All complaints will be reviewed and investigated
 promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of

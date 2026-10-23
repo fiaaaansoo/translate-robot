@@ -101,10 +101,22 @@ option (source catalog path, base branch, retry bound, and more).
 By default, translations come from the Anthropic API
 (`ANTHROPIC_API_KEY`), and the token used to push the branch and open
 the PR comes from `GITHUB_TOKEN`. Neither is ever logged or included in
-an error message. Source strings sent to Anthropic's API are processed
-by that third party under your own API key. translate-robot is not a
-hosted service, so you remain the data controller for anything you send
-through it.
+an error message.
+
+**Data and third parties.** translate-robot runs on your machine or in
+your own CI. It is not a hosted service, and its author receives none of
+your data. By default, each string to translate (with the target locale
+and the width to fit) is sent to the Anthropic API under your own API
+key, and is governed by your agreement with Anthropic (see Anthropic's
+commercial terms and data-retention documentation). UI strings rarely
+contain personal data. If yours do, you are responsible for having a
+legal basis and for putting in place the agreements you need with
+Anthropic. With `--llm-provider openai-compatible`, strings are sent
+only to the server at `--llm-base-url`; what that server does with them
+depends on how you operate it. The API is billed to you per use, and
+retries are bounded. translate-robot is not affiliated with or endorsed
+by Anthropic, OpenAI, Ollama, vLLM or Microsoft. These names only
+describe compatibility.
 
 ### Self-hosted model
 
@@ -126,7 +138,7 @@ node bin/translate-robot run \
 
 `--llm-base-url` and `--llm-model` are both required with this provider.
 Neither has a default, so a missing one fails loudly instead of falling
-back to a wrong host. Source strings never leave the server at
+back to a wrong host. Source strings are sent only to the server at
 `--llm-base-url` in this mode. If that server needs an API key, set
 `TRANSLATE_ROBOT_LLM_API_KEY`. One provider runs per invocation, with no
 automatic fallback between providers.
@@ -185,8 +197,8 @@ checks that no code path merges or approves one.
 English to German in v1. See the limits below.
 
 **Can I keep my strings off a third-party API?**
-Yes. Use the self-hosted provider: source strings only reach the server
-you point `--llm-base-url` at.
+Yes. Use the self-hosted provider: source strings are sent only to the
+server you point `--llm-base-url` at.
 
 **How is this different from pseudo-localization or CSS `text-overflow`?**
 Pseudo-localization stretches placeholder text to expose layout bugs but

@@ -28,3 +28,8 @@ Review is required before merging - never an automatic merge, especially
 not for a PR that modifies translation files (an automated translation's
 quality isn't something CI alone can verify). CI must be green (lint +
 tests) before merging.
+
+## License
+
+By contributing, you agree that your contribution is licensed under the
+[Apache License 2.0](LICENSE), the same license as the project.

@@ -105,10 +105,23 @@ d'essais, etc.).
 Par défaut, les traductions viennent de l'API Anthropic
 (`ANTHROPIC_API_KEY`), et le jeton qui pousse la branche et ouvre la PR
 vient de `GITHUB_TOKEN`. Aucun des deux n'est jamais journalisé ni inclus
-dans un message d'erreur. Les chaînes envoyées à l'API d'Anthropic sont
-traitées par ce tiers avec votre propre clé API. translate-robot n'est
-pas un service hébergé : vous restez responsable de traitement pour tout
-ce que vous envoyez.
+dans un message d'erreur.
+
+**Données et tiers.** translate-robot s'exécute sur votre machine ou dans
+votre propre CI. Ce n'est pas un service hébergé et son auteur ne reçoit
+aucune de vos données. Par défaut, chaque chaîne à traduire (avec la
+langue cible et la largeur à respecter) est envoyée à l'API Anthropic
+avec votre propre clé, selon votre contrat avec Anthropic (voir ses
+conditions commerciales et sa documentation sur la conservation des
+données). Les chaînes d'interface contiennent rarement des données
+personnelles ; si les vôtres en contiennent, c'est à vous de disposer
+d'une base légale et des accords nécessaires avec Anthropic. Avec
+`--llm-provider openai-compatible`, les chaînes ne partent que vers le
+serveur de `--llm-base-url` ; ce qu'il en fait dépend de la façon dont
+vous l'exploitez. L'API est facturée à l'usage chez vous, et les essais
+sont bornés. translate-robot n'est ni affilié à Anthropic, OpenAI,
+Ollama, vLLM ou Microsoft, ni approuvé par eux ; ces noms décrivent
+seulement la compatibilité.
 
 ### Modèle auto-hébergé
 
@@ -131,7 +144,7 @@ node bin/translate-robot run \
 `--llm-base-url` et `--llm-model` sont tous deux obligatoires avec ce
 fournisseur. Aucun n'a de valeur par défaut : s'il en manque un, l'outil
 échoue franchement au lieu de se rabattre sur un mauvais hôte. Dans ce
-mode, les chaînes sources ne quittent jamais le serveur de
+mode, les chaînes sources ne sont envoyées qu'au serveur de
 `--llm-base-url`. Si ce serveur exige une clé API, définissez
 `TRANSLATE_ROBOT_LLM_API_KEY`. Un seul fournisseur par exécution, sans
 repli automatique de l'un vers l'autre.
@@ -191,8 +204,8 @@ aussi qu'aucun chemin de code ne fusionne ni n'approuve une PR.
 De l'anglais vers l'allemand en v1. Voir les limites ci-dessous.
 
 **Puis-je garder mes chaînes hors d'une API tierce ?**
-Oui, avec le fournisseur auto-hébergé : les chaînes sources n'atteignent
-que le serveur indiqué par `--llm-base-url`.
+Oui, avec le fournisseur auto-hébergé : les chaînes sources ne sont envoyées
+qu'au serveur indiqué par `--llm-base-url`.
 
 **En quoi est-ce différent de la pseudo-localisation ou de `text-overflow` en CSS ?**
 La pseudo-localisation étire un texte factice pour révéler les défauts de
