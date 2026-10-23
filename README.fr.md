@@ -239,4 +239,4 @@ de la communauté. Les failles de sécurité passent par
 
 ## Licence
 
-[Apache License 2.0](LICENSE).
+Copyright 2026 fiaaaansoo. Sous [licence Apache 2.0](LICENSE).
