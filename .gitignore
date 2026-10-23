@@ -41,3 +41,11 @@ Thumbs.db
 
 # Venv du crew-dashboard (bootstrap projet-local via crew/dashboard.bat)
 .dashboard-venv/
+
+# Local agent/workflow scaffold (kept on disk, not published)
+CLAUDE.md
+AGENTS.md
+.claude/
+crew/
+.githooks/
+check_placeholders.py
