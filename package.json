@@ -1,7 +1,33 @@
 {
   "name": "translate-robot",
   "version": "0.1.0",
-  "description": "Agent pipeline that translates new UI strings under the real visual width constraint of the component they render in, and opens a PR for human review.",
+  "description": "Translate new i18n strings so they fit the real rendered width of their UI component (measured in Chromium via Playwright). LLM retry loop, opens a pull request for human review. CLI and GitHub Action.",
+  "keywords": [
+    "i18n",
+    "l10n",
+    "localization",
+    "internationalization",
+    "translation",
+    "llm",
+    "text-overflow",
+    "text-expansion",
+    "playwright",
+    "github-action",
+    "cli",
+    "pull-request",
+    "anthropic",
+    "ollama",
+    "ui-testing"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fiaaaansoo/translate-robot.git"
+  },
+  "homepage": "https://github.com/fiaaaansoo/translate-robot#readme",
+  "bugs": {
+    "url": "https://github.com/fiaaaansoo/translate-robot/issues"
+  },
+  "author": "Sofian <189870137+fiaaaansoo@users.noreply.github.com> (https://github.com/fiaaaansoo)",
   "type": "module",
   "license": "Apache-2.0",
   "bin": {

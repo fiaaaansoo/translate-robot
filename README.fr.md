@@ -2,134 +2,139 @@ English version → [README.md](README.md)
 
 # translate-robot
 
-Traduit les nouvelles chaînes i18n d'interface sous la contrainte réelle
-de largeur rendue de leur composant, pas une estimation au nombre de
-caractères. Quand une traduction est trop longue pour le bouton, l'onglet
-ou l'élément de navigation où elle s'affiche, translate-robot détecte ce
-dépassement avant la mise en production, pas après qu'un utilisateur
-l'ait signalé par une capture d'écran.
+**Des traductions i18n qui tiennent dans l'interface : mesurées dans un vrai navigateur, relues dans une pull request.**
 
 [![CI](https://github.com/fiaaaansoo/translate-robot/actions/workflows/ci.yml/badge.svg)](https://github.com/fiaaaansoo/translate-robot/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-| Avant : traduction naïve | Après : translate-robot |
-| --- | --- |
-| ![Une traduction allemande qui déborde du bord d'un bouton bleu](docs/images/before-overflow.png) | ![Le même bouton avec une traduction qui tient](docs/images/after-fit.png) |
-| `"Reichen Sie Ihren monatlichen Spesenbericht ein"` : allemand correct, trop large pour le bouton. | `"Spesenbericht einreichen"` : même sens, mesuré pour tenir. |
+Vous ajoutez une chaîne d'interface en anglais. translate-robot la
+traduit, affiche le vrai composant dans Chromium headless, vérifie que le
+texte tient, recommence avec la mesure en retour si ça déborde, puis
+ouvre une pull request à relire par un humain. Il ne fusionne ni
+n'approuve jamais une pull request lui-même.
 
-> Aucune clé API nécessaire pour voir ça marcher : `--dry-run` rejoue une
-> traduction pré-enregistrée sur le repo-jouet fourni dans ce dépôt.
+Il s'utilise en CLI ou en GitHub Action. Les traductions viennent de
+l'API Anthropic ou de n'importe quel serveur auto-hébergé compatible
+OpenAI (Ollama, vLLM).
+
+## Le problème
+
+Une traduction peut être correcte et casser la mise en page. L'allemand
+de « Submit your monthly expense report » est plus long que l'anglais, et
+un bouton de largeur fixe le coupe. Le nombre de caractères ne permet pas
+de le prévoir : avec des polices proportionnelles ou des écritures
+larges, deux textes de même longueur n'occupent pas la même largeur. En
+général, le débordement est découvert sur une capture d'écran après la
+mise en production.
+
+## Avant et après
+
+Chaîne source (`en`) : `Submit your monthly expense report`
+
+**Traduction naïve** (`de`) : `Reichen Sie Ihren monatlichen Spesenbericht ein`
+
+![Traduction allemande de « Submit your monthly expense report » coupée au bord droit d'un bouton bleu de 320 px](docs/images/before-overflow.png)
+
+**translate-robot** (`de`) : `Spesenbericht einreichen`
+
+![Le même bouton de 320 px avec la traduction allemande plus courte, qui tient dedans](docs/images/after-fit.png)
+
+La seconde traduction est plus courte et perd « monatlichen » (mensuel).
+C'est le compromis fait pour tenir dans l'espace, et c'est pourquoi un
+humain relit chaque pull request.
+
+## Essayer (aucune clé API nécessaire)
+
+`--dry-run` rejoue une traduction pré-enregistrée sur le repo-jouet
+[`fixtures/toy-repo/`](fixtures/toy-repo/README.md), un vrai composant
+HTML avec son fichier i18n. Rien n'est écrit, aucune PR n'est ouverte.
 
 ```bash
 git clone https://github.com/fiaaaansoo/translate-robot.git && cd translate-robot
-npm install && npm run build
+npm install && npx playwright install chromium && npm run build
 node bin/translate-robot run --repo fixtures/toy-repo --recorded-translations fixtures/toy-repo/translations.recorded.json --target-locale de --dry-run
 ```
 
-C'est exactement la configuration derrière les captures ci-dessus :
-[`fixtures/toy-repo/`](fixtures/toy-repo/README.md) est un vrai composant
-HTML et un vrai fichier i18n, pas une maquette.
+Sortie :
 
-translate-robot ouvre une pull request avec le résultat. Il ne la merge
-ni ne l'approuve jamais lui-même. Chaque traduction passe par une revue
-humaine avant d'arriver en production, sans exception.
+```text
+expense_report_submit: "Spesenbericht einreichen" (320px, 1 attempt(s), resolved)
+```
+
+Node.js ^22.12.0, ^24 ou >=26 est requis.
+
+## Comment ça marche
+
+1. **Diff.** Compare le catalogue source (`i18n/en.json`) à sa version sur
+   la branche de base pour trouver les clés ajoutées ou modifiées.
+2. **Résolution.** Associe chaque clé au composant où elle s'affiche
+   (`i18n-map.json`).
+3. **Mesure.** Affiche ce composant dans Chromium headless via
+   Playwright, injecte la traduction candidate et compare le
+   `scrollWidth` du nœud à son `clientWidth`, soit ce qu'un vrai
+   navigateur montrerait à un utilisateur.
+4. **Nouvel essai.** Si le texte déborde, le candidat repart vers le LLM
+   avec la mesure (`"ce candidat était trop large de 23px, réessaie"`),
+   pour un nombre d'essais borné.
+5. **Pull request.** Écrit le catalogue cible (`i18n/de.json`), le
+   committe sur une nouvelle branche et ouvre une pull request. Rien
+   n'est fusionné.
 
 > **Les traductions sont une sortie de LLM.** translate-robot vérifie
-> qu'une traduction tient dans son composant ; il ne vérifie pas qu'elle
-> est correcte, complète ou culturellement appropriée. Faites toujours
-> relire la pull request par quelqu'un qui lit la langue cible avant de
-> merger. Voir [SECURITY.md](SECURITY.md).
+> qu'une traduction tient dans son composant. Il ne vérifie pas qu'elle
+> est correcte, complète ou adaptée culturellement. Faites relire chaque
+> pull request par quelqu'un qui lit la langue cible. Voir
+> [SECURITY.md](SECURITY.md).
 
----
-
-## Comment la largeur est mesurée
-
-La plupart des outils i18n estiment si une traduction va tenir en
-comptant les caractères. Ça ne fonctionne pas bien : l'allemand et le
-finnois sont 20 à 35 % plus longs que l'anglais à sens égal, les
-caractères CJK sont plus larges que les caractères latins, et les
-polices à chasse variable font que deux chaînes de même longueur peuvent
-se rendre à des largeurs très différentes.
-
-translate-robot mesure au lieu de deviner : il rend le vrai composant
-dans un Chromium headless (via Playwright), insère chaque candidat de
-traduction, et compare le `scrollWidth` du nœud à son `clientWidth`,
-exactement ce qu'un vrai navigateur montrerait à un vrai utilisateur. Si
-une traduction déborde, elle repart vers le LLM avec ce retour
-(`"ce candidat dépassait de 23px, réessaie"`) pour un nombre borné de
-tentatives.
-
-## Installation
-
-```bash
-git clone https://github.com/fiaaaansoo/translate-robot.git
-cd translate-robot
-npm install
-npm run build
-```
-
-Node.js ^22.12.0 (ou ^24, ou >=26) est requis. `npm install` installe
-aussi Playwright ; son binaire Chromium peut nécessiter un
-`npx playwright install chromium` séparé selon l'environnement.
-
-## Usage
+## L'utiliser sur votre dépôt
 
 ```bash
 node bin/translate-robot run \
   --new-i18n i18n/en.json \
   --mapping i18n-map.json \
   --target-locale de \
-  --owner <propriétaire-github> \
-  --repo-name <nom-du-repo-github>
+  --owner <github-owner> \
+  --repo-name <github-repo>
 ```
 
-Ceci diffe `i18n/en.json` contre sa version sur la branche de base,
-traduit chaque clé ajoutée ou modifiée sous la contrainte de largeur
-mesurée de son composant, écrit le résultat dans `i18n/de.json`, et ouvre
-une pull request. Ajoutez `--dry-run` pour voir le résultat sans rien
-écrire ni ouvrir de PR. Utile en CI, ou pour vérifier un run avant qu'il
-ne touche votre dépôt.
-
-Lancez `node bin/translate-robot run --help` pour la liste complète des
-options (chemin du catalogue source, branche de base, borne de
-tentatives, et plus).
+Ajoutez `--dry-run` pour voir le résultat sans rien écrire ni ouvrir de
+PR, par exemple en CI. `node bin/translate-robot run --help` liste toutes
+les options (chemin du catalogue source, branche de base, nombre
+d'essais, etc.).
 
 Par défaut, les traductions viennent de l'API Anthropic
-(`ANTHROPIC_API_KEY` dans l'environnement) ; le token GitHub utilisé pour
-pousser la branche et ouvrir la PR vient de `GITHUB_TOKEN`. Ni l'un ni
-l'autre n'est jamais loggué ni inclus dans un message d'erreur. Envoyer
-des chaînes source à l'API Anthropic signifie qu'elles sont traitées par
-ce sous-traitant tiers via votre propre clé API. translate-robot n'est
-pas un service hébergé, vous restez donc responsable du traitement de ce
-que vous lui envoyez.
+(`ANTHROPIC_API_KEY`), et le jeton qui pousse la branche et ouvre la PR
+vient de `GITHUB_TOKEN`. Aucun des deux n'est jamais journalisé ni inclus
+dans un message d'erreur. Les chaînes envoyées à l'API d'Anthropic sont
+traitées par ce tiers avec votre propre clé API. translate-robot n'est
+pas un service hébergé : vous restez responsable de traitement pour tout
+ce que vous envoyez.
 
-### Utiliser un modèle auto-hébergé à la place
+### Modèle auto-hébergé
 
-Passez `--llm-provider openai-compatible` pour traduire via n'importe
-quel serveur qui parle l'API de complétion de chat OpenAI, comme une
-instance auto-hébergée d'Ollama ou de vLLM, à la place de l'API
-Anthropic :
+Passez `--llm-provider openai-compatible` pour traduire avec n'importe
+quel serveur qui parle l'API chat completions d'OpenAI, comme une
+instance Ollama ou vLLM auto-hébergée :
 
 ```bash
 node bin/translate-robot run \
   --new-i18n i18n/en.json \
   --mapping i18n-map.json \
   --target-locale de \
-  --owner <propriétaire-github> \
-  --repo-name <nom-du-repo-github> \
+  --owner <github-owner> \
+  --repo-name <github-repo> \
   --llm-provider openai-compatible \
   --llm-base-url http://localhost:11434/v1 \
   --llm-model llama3
 ```
 
-`--llm-base-url` et `--llm-model` sont tous les deux obligatoires avec ce
-provider ; aucun des deux n'a de valeur par défaut, pour qu'un oubli
-échoue bruyamment plutôt que de basculer silencieusement vers le mauvais
-serveur. Les chaînes source ne quittent jamais le serveur désigné par
-`--llm-base-url` dans ce mode. Si ce serveur exige une clé API, définissez
-`TRANSLATE_ROBOT_LLM_API_KEY` ; la plupart des déploiements auto-hébergés
-n'en exigent aucune. Un seul provider tourne par invocation ; il n'y a
-pas de bascule automatique entre providers.
+`--llm-base-url` et `--llm-model` sont tous deux obligatoires avec ce
+fournisseur. Aucun n'a de valeur par défaut : s'il en manque un, l'outil
+échoue franchement au lieu de se rabattre sur un mauvais hôte. Dans ce
+mode, les chaînes sources ne quittent jamais le serveur de
+`--llm-base-url`. Si ce serveur exige une clé API, définissez
+`TRANSLATE_ROBOT_LLM_API_KEY`. Un seul fournisseur par exécution, sans
+repli automatique de l'un vers l'autre.
 
 ## GitHub Action
 
@@ -155,46 +160,68 @@ jobs:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
 
-Le bloc `permissions` ci-dessus est le minimum nécessaire à l'Action :
-`contents: write` pour pousser la branche de traduction,
-`pull-requests: write` pour ouvrir la PR. Donnez le même scope à tout
-jeton que vous configurez ; il n'a jamais besoin d'accès `admin`.
+Le bloc `permissions` est le minimum requis par l'Action :
+`contents: write` pour pousser la branche de traduction et
+`pull-requests: write` pour ouvrir la PR. Limitez de la même façon tout
+jeton que vous configurez. Il n'a jamais besoin d'un accès `admin`.
 
-Pour traduire via un modèle auto-hébergé à la place, remplacez
-`anthropic-api-key` par `llm-provider: openai-compatible`,
-`llm-base-url`, et `llm-model` (voir
-[Utiliser un modèle auto-hébergé à la place](#utiliser-un-modèle-auto-hébergé-à-la-place)
-ci-dessus pour le rôle de chacun).
+L'Action installe les dépendances et Chromium et compile la CLI à chaque
+exécution (les caches npm et Playwright sont utilisés) : comptez
+quelques minutes à froid.
 
-## Périmètre v1
+Pour un modèle auto-hébergé, remplacez `anthropic-api-key` par
+`llm-provider: openai-compatible`, `llm-base-url` et `llm-model`.
 
-La v1 résout un pipeline complet plutôt que plusieurs à moitié. Limites
-actuelles, toutes volontaires :
+## FAQ
 
-- Une langue source, une langue cible : anglais vers allemand.
-- Catalogues i18n JSON plats uniquement : pas de clés imbriquées, pas de
-  règles de pluriel ICU, pas d'autre format (Fluent, gettext, etc.).
+**Pourquoi les textes traduits débordent-ils des boutons ?**
+Une traduction est souvent plus longue que la source, et la largeur
+qu'un texte demande dépend de la police et de l'écriture, pas de son
+nombre de caractères.
+
+**Comment translate-robot vérifie-t-il qu'une traduction tient ?**
+Il affiche le vrai composant dans Chromium headless et compare le
+`scrollWidth` du nœud à son `clientWidth`.
+
+**Fusionne-t-il automatiquement ?**
+Non. Il ouvre une pull request puis s'arrête. Un test du dépôt vérifie
+aussi qu'aucun chemin de code ne fusionne ni n'approuve une PR.
+
+**Quelles langues sont prises en charge ?**
+De l'anglais vers l'allemand en v1. Voir les limites ci-dessous.
+
+**Puis-je garder mes chaînes hors d'une API tierce ?**
+Oui, avec le fournisseur auto-hébergé : les chaînes sources n'atteignent
+que le serveur indiqué par `--llm-base-url`.
+
+**En quoi est-ce différent de la pseudo-localisation ou de `text-overflow` en CSS ?**
+La pseudo-localisation étire un texte factice pour révéler les défauts de
+mise en page, mais ne produit pas de traduction. `text-overflow:
+ellipsis` masque le débordement au lieu de corriger le texte.
+translate-robot produit une traduction mesurée pour tenir.
+
+## Limites de la v1
+
+La v1 résout un seul pipeline de bout en bout plutôt que plusieurs à
+moitié.
+
+- Une langue source, une langue cible : de l'anglais vers l'allemand.
+- Catalogues JSON plats uniquement. Pas de clés imbriquées, de pluriels
+  ICU, de Fluent ni de gettext.
 - Un seul moteur de rendu : Chromium, via Playwright.
-- Une pull request par run.
-- Un seul provider de traduction par run : soit l'API Anthropic, soit un
-  unique serveur OpenAI-compatible configuré, jamais les deux, sans
-  bascule automatique de l'un vers l'autre.
+- Une pull request par exécution.
+- Un seul fournisseur de traduction par exécution, sans repli
+  automatique.
 
-Pas encore construit : langues cibles supplémentaires, catalogues
-imbriqués/structurés, autres moteurs de rendu, regroupement de plusieurs
-runs dans une seule PR, bascule automatique entre providers de
-traduction.
-
-Sans rapport avec le périmètre v1 et qui ne changera pas :
-translate-robot ne merge ni n'approuve jamais une pull request lui-même.
-Chaque traduction passe par une revue humaine avant d'arriver en
-production, en v1 comme après.
+Pas encore construit : d'autres langues cibles, les catalogues imbriqués,
+d'autres moteurs de navigateur, le regroupement de plusieurs exécutions
+dans une seule PR, le repli entre fournisseurs.
 
 ## Contribuer
 
-Voir [CONTRIBUTING.md](CONTRIBUTING.md) pour les conventions de
-branches/commits et [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) pour les
-standards de la communauté. Les problèmes de sécurité passent par
+Voir [CONTRIBUTING.md](CONTRIBUTING.md) pour les conventions de branches
+et de commits, et [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) pour les règles
+de la communauté. Les failles de sécurité passent par
 [SECURITY.md](SECURITY.md), pas par une issue publique.
 
 ## Licence

@@ -1,9 +1,10 @@
-name: 'translate-robot'
+name: 'translate-robot: i18n translations that fit the UI'
 description: >-
-  Translates new UI strings under the real rendered width of their
-  component, and opens a pull request for human review. Never merges or
-  approves a pull request itself.
-author: 'translate-robot'
+  Translate new i18n strings to fit the real rendered width of each UI component. Opens a PR for human review.
+author: 'fiaaaansoo'
+branding:
+  icon: 'globe'
+  color: 'blue'
 
 inputs:
   repo:
